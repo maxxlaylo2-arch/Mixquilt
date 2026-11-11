@@ -1,0 +1,27 @@
+Copyright (c) 2026 Stephen Curran III. All rights reserved.
+
+PROPRIETARY SOURCE CODE
+
+This software and its source code (the "Software") are the property of
+Stephen Curran III. No permission is granted to copy, modify, merge,
+publish, distribute, sublicense, sell, or otherwise use the Software, in
+whole or in part, without the prior written permission of the copyright
+holder. Public availability of this repository or of the hosted app does
+not grant any license to use, copy, modify or distribute the code, except
+for the limited rights GitHub's Terms of Service (Section D.5) give other
+users to view and fork the repository on GitHub.
+
+Songs, lyrics, recordings and other content that users create with the
+app belong to those users.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
+
+Third-party components keep their own licenses, which this notice does not
+change. See THIRD-PARTY-NOTICES.txt and public/licenses/ (CMUDICT-LICENSE.txt,
+SCOWL-COPYRIGHT.txt) and scripts/LICENSE-cmudict. In particular, the CMU
+Pronouncing Dictionary data is used under its BSD-2-Clause license, and its
+copyright notice and license terms must be kept with any copy of that data.

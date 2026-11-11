@@ -1,0 +1,33 @@
+{
+  "name": "mixquilt",
+  "version": "0.1.0",
+  "description": "Mixquilt: an AI-free, variety-first song studio (PWA)",
+  "scripts": {
+    "dev": "vite",
+    "build": "node scripts/gen-notices.mjs && tsc --noEmit && vite build && node scripts/postbuild.mjs",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "build:dict": "node scripts/build-dict.mjs",
+    "smoke": "node tests/smoke.mjs",
+    "test:polish": "node tests/polish-dsp.test.mjs",
+    "build:native": "BASE_PATH=./ npm run build",
+    "notices": "node scripts/gen-notices.mjs"
+  },
+  "author": "Stephen Curran III",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "dependencies": {
+    "@tonejs/midi": "^2.0.28",
+    "fflate": "^0.8.3",
+    "jspdf": "^4.2.1",
+    "preact": "^11.2.0",
+    "tone": "^15.1.22"
+  },
+  "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
+    "playwright": "^1.65.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0"
+  },
+  "private": true
+}

@@ -1,0 +1,24 @@
+import { render } from 'preact';
+import { App } from './ui/App';
+import { initStore } from './store';
+import './styles.css';
+import { registerSW } from 'virtual:pwa-register';
+
+// The app has no routes: if a deep link or the 404.html fallback landed us below the base path,
+// go back to the base so relative asset URLs (dictionary, worklet, licenses) resolve correctly.
+{
+  const baseUrl = new URL(import.meta.env.BASE_URL, location.href);
+  if (import.meta.env.BASE_URL.startsWith('/') && location.pathname !== baseUrl.pathname && location.pathname !== baseUrl.pathname + 'index.html') {
+    history.replaceState(null, '', baseUrl.pathname + location.search + location.hash);
+  }
+}
+
+initStore().then(() => render(<App />, document.getElementById('root')!));
+if ('serviceWorker' in navigator && !import.meta.env.DEV) registerSW({ immediate: true });
+
+// Test hook used by the automated smoke tests (read-only helpers + render).
+import { getSong, update } from './store';
+import { renderSong } from './audio/export';
+import { runPolish } from './audio/polishClient';
+import { trackPitch } from './audio/polishDsp';
+(window as any).__mq = { getSong, update, renderSong, runPolish, trackPitch };

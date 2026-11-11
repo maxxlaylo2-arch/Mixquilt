@@ -1,0 +1,40 @@
+# dependencies and build output
+node_modules/
+dist/
+dev-dist/
+*.tsbuildinfo
+
+# generated artifacts and test output
+exports/
+screenshots/
+test-results/
+playwright-report/
+*.wav
+*.mid
+*.zip
+*.pdf
+
+# large source data rebuilt by `npm run build:dict`
+scripts/cmudict.dict
+
+# local env, secrets and personal data
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+credentials*.json
+secrets*
+
+# Capacitor native projects (generated)
+android/
+ios/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
