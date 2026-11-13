@@ -306,3 +306,8 @@ body:has(.sheet) .toast { top: calc(14px + env(safe-area-inset-top, 0px)); botto
 .legal-md p, .legal-md ul { margin: 6px 0; }
 .legal-md ul { padding-left: 20px; }
 .legal-pre { white-space: pre-wrap; word-break: break-word; font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 10px; max-height: 50vh; overflow: auto; }
+
+.finish { display: flex; flex-direction: column; gap: 6px; }
+.finish-label { font-weight: 700; font-size: 0.9em; }
+.finish-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.finish .hint { margin: 0; font-size: 0.85em; color: var(--muted); }

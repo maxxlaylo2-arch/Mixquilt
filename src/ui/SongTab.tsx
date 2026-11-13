@@ -8,6 +8,7 @@ import { play, refreshMix } from '../audio/engine';
 import { MacroSliders, SoundPicker, currentVoiceName } from './SoundPicker';
 import { sectionStartBeat } from '../audio/compose';
 import { download, encodeWav, exportMidi, exportStemsZip, renderSong, safeName } from '../audio/export';
+import { FINISHES, finishOf } from '../audio/master';
 import { LegalSheet, type LegalPage } from './LegalSheet';
 import { CONTACT_EMAIL } from '../legal';
 import { authorshipPdf, fmtTime, lyricSheetPdf, sha256 } from '../pdf';
@@ -93,6 +94,17 @@ function Mixer() {
           <div class="strip-head"><span class="strip-name">Master</span></div>
           <input type="range" class="range" min={0} max={1} step={0.01} value={s.mix.master} aria-label="Master volume"
             onInput={(e) => mix((x) => { x.mix.master = Number((e.target as HTMLInputElement).value); }, 'Set master volume')} />
+          <div class="finish" role="group" aria-label="Master finish" data-testid="finish">
+            <span class="finish-label">Finish</span>
+            <div class="finish-chips">
+              {FINISHES.map((f) => (
+                <button key={f.id} class={'chip sm' + (finishOf(s.mix).id === f.id ? ' on' : '')} aria-pressed={finishOf(s.mix).id === f.id}
+                  data-testid={'finish-' + f.id}
+                  onClick={() => mix((x) => { x.mix.finish = f.id; }, `Set master finish to ${f.label}`)}>{f.label}</button>
+              ))}
+            </div>
+            <p class="hint" data-testid="finish-hint">{finishOf(s.mix).hint} Stems always export Pre-master.</p>
+          </div>
         </div>
       </div>
       {pick && <SoundPicker track={pick} onClose={() => setPick(null)} />}

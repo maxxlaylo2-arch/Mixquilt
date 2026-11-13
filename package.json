@@ -14,7 +14,9 @@
     "test:voices": "node tests/levels.mjs",
     "regressions": "node tests/regressions.mjs",
     "build:native": "BASE_PATH=./ npm run build",
-    "notices": "node scripts/gen-notices.mjs"
+    "notices": "node scripts/gen-notices.mjs",
+    "test:master": "node tests/master.test.mjs",
+    "test:finish": "node tests/master-finish.mjs"
   },
   "author": "Stephen Curran III",
   "license": "SEE LICENSE IN LICENSE",

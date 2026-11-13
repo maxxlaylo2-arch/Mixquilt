@@ -1,3 +1,4 @@
+import { FINISHES, finishOf, softClip } from './audio/master';
 import { render } from 'preact';
 import { App } from './ui/App';
 import { initStore } from './store';
@@ -32,5 +33,5 @@ import { keyAfterTranspose } from './theory';
 import { toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS } from './audio/macros';
 import { trimTakeToSection, trimTakeToSectionFloor, takeLookupTime, TAKE_SECTION_SLOP_SEC } from './audio/takeTiming';
 import { migrate as migrateSong } from './store';
-(window as any).__mq = { getSong, update, renderSong, runPolish, trackPitch, applyRecipe, applyTempo, polishContext, contextMode, midiToName, setUi, ui, takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, keyAfterTranspose, toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS,
+(window as any).__mq = { FINISHES, finishOf, softClip, getSong, update, renderSong, runPolish, trackPitch, applyRecipe, applyTempo, polishContext, contextMode, midiToName, setUi, ui, takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, keyAfterTranspose, toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS,
   trimTakeToSection, trimTakeToSectionFloor, takeLookupTime, TAKE_SECTION_SLOP_SEC, migrateSong };

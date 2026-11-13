@@ -83,7 +83,7 @@ export interface Song {
   parts: Record<string, Note[]>; // melody parts, key = part name
   partBars: number;
   sections: Section[];
-  mix: Record<TrackId, MixTrack> & { master: number };
+  mix: Record<TrackId, MixTrack> & { master: number; finish?: 'off' | 'stream' | 'chart' | 'club' };
   lyrics: LyricBlock[];
   takes: Take[];
   log: LogEntry[];
