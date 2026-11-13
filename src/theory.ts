@@ -70,13 +70,16 @@ export const PALETTES: PaletteDef[] = [
   { id: 'vinyl', label: 'Warm keys, sub, flute', kit: 'dusty', bass: 'sub', chords: 'ekeys', lead: 'flute' },
   { id: 'neon', label: 'Punchy drums, saw bass, wide synth', kit: 'tight', bass: 'saw', chords: 'wide', lead: 'square' },
   { id: 'clean', label: 'Soft drums, piano, warm pad', kit: 'organic', bass: 'round', chords: 'piano', lead: 'softlead' },
+  { id: 'gospeltrap', label: 'Gospel trap: clap kit, dirty 808, choir pad, choir ooh', kit: 'gospelclap', bass: 'dirty808', chords: 'choirpad', lead: 'choirooh' },
+  { id: 'choirnight', label: 'Choir night: dark kit, reese, choir pad, glass bell', kit: 'trapdark', bass: 'reese', chords: 'choirpad', lead: 'glassbell' },
+  { id: 'tapesoul', label: 'Tape soul: lo-fi kit, tape bass, wurli, tape flute', kit: 'lofitape', bass: 'tapebass', chords: 'wurli', lead: 'tapeflute' },
+  { id: 'neonacid', label: 'Neon acid: techno kit, acid bass, motion pad, supersaw', kit: 'technoclick', bass: 'acid', chords: 'motionpad', lead: 'supersaw' },
+  { id: 'worldmix', label: 'World pulse: world kit, log drum, kalimba, flute', kit: 'worldpulse', bass: 'log', chords: 'kalimba', lead: 'flute' },
+  { id: 'metalbow', label: 'Bowed metal: industrial kit, growl, bowed pad, metal bell', kit: 'industrial', bass: 'growl', chords: 'bowed', lead: 'metalbell' },
+  { id: 'glassgarden', label: 'Glass garden: halo kit, glass bass, glass pad, glass bell', kit: 'halo', bass: 'glassbass', chords: 'glasspad', lead: 'glassbell' },
+  { id: 'shimmerfolk', label: 'Shimmer folk: brush kit, choir sub, shimmer pad, kalimba lead', kit: 'jazzbrush', bass: 'choirsub', chords: 'shimmer', lead: 'kalimbalead' },
 ];
 export const paletteById = (id: string) => PALETTES.find((p) => p.id === id) ?? PALETTES[0];
-
-export const KIT_OPTIONS = [['boom808', '808 boom'], ['dusty', 'Dusty'], ['tight', 'Tight'], ['organic', 'Organic'], ['big', 'Big room']];
-export const BASS_OPTIONS = [['sub', 'Sub 808'], ['round', 'Round bass'], ['analog', 'Analog'], ['saw', 'Saw bass'], ['log', 'Log drum']];
-export const CHORD_OPTIONS = [['pad', 'Airy pad'], ['ekeys', 'Electric keys'], ['organ', 'Organ'], ['pluck', 'Plucks'], ['strings', 'Strings'], ['wide', 'Wide synth'], ['piano', 'Piano']];
-export const LEAD_OPTIONS = [['bell', 'Bell'], ['softlead', 'Soft lead'], ['piano', 'Piano'], ['flute', 'Flute'], ['brass', 'Brass'], ['square', 'Square lead']];
 
 export const TWISTS = [
   { id: 'lift', label: 'Key lift on the last hook', how: 'In Song > Arrange, set the last Hook to +1 or +2 semitones.' },
@@ -108,18 +111,18 @@ export const STRUCTURES: StructureDef[] = [
 
 export interface MoodDef { id: string; label: string; emoji: string; modes: string[]; bpm: [number, number]; genres: string[]; palettes: string[]; grooves: string[] }
 export const MOODS: MoodDef[] = [
-  { id: 'hype', label: 'Hype', emoji: '🔥', modes: ['minor', 'phrygian', 'harmonic', 'dorian'], bpm: [130, 150], genres: ['Trap', 'Drill', 'Phonk', 'Club', 'Rock'], palettes: ['bells', 'neon', 'cinema'], grooves: ['straight', 'light'] },
-  { id: 'chill', label: 'Chill', emoji: '🌊', modes: ['dorian', 'major', 'lydian', 'minor'], bpm: [70, 92], genres: ['Lo-fi', 'R&B', 'Jazz', 'Soul', 'Boom-bap'], palettes: ['dusty', 'vinyl', 'clean'], grooves: ['swung', 'lazy', 'light'] },
-  { id: 'happy', label: 'Happy', emoji: '☀️', modes: ['major', 'mixolydian', 'lydian'], bpm: [100, 128], genres: ['Pop', 'Afrobeats', 'Disco', 'Funk', 'Country'], palettes: ['plucks', 'neon', 'organ', 'clean'], grooves: ['straight', 'light', 'swung'] },
-  { id: 'heartbreak', label: 'Heartbreak', emoji: '💔', modes: ['minor', 'dorian', 'harmonic'], bpm: [60, 90], genres: ['R&B', 'Ballad', 'Pop', 'Soul', 'Folk'], palettes: ['clean', 'bells', 'vinyl'], grooves: ['straight', 'lazy'] },
-  { id: 'romantic', label: 'Romantic', emoji: '🌹', modes: ['major', 'dorian', 'lydian'], bpm: [64, 96], genres: ['R&B', 'Soul', 'Reggaeton', 'Jazz', 'Afrobeats'], palettes: ['dusty', 'clean', 'plucks'], grooves: ['swung', 'light', 'lazy'] },
-  { id: 'nostalgic', label: 'Nostalgic', emoji: '📼', modes: ['major', 'mixolydian', 'dorian', 'minor'], bpm: [76, 110], genres: ['Synthwave', 'Lo-fi', 'Soul', 'Folk', 'Boom-bap'], palettes: ['vinyl', 'dusty', 'neon'], grooves: ['light', 'swung'] },
-  { id: 'dark', label: 'Dark', emoji: '🌑', modes: ['phrygian', 'minor', 'harmonic'], bpm: [64, 145], genres: ['Drill', 'Trap', 'Techno', 'Cinematic', 'Phonk'], palettes: ['bells', 'cinema', 'neon'], grooves: ['straight', 'light'] },
-  { id: 'dreamy', label: 'Dreamy', emoji: '☁️', modes: ['lydian', 'major', 'dorian'], bpm: [70, 110], genres: ['Lo-fi', 'Synthwave', 'Cinematic', 'R&B', 'House'], palettes: ['bells', 'clean', 'vinyl'], grooves: ['light', 'straight', 'swung'] },
-  { id: 'uplifting', label: 'Uplifting', emoji: '🚀', modes: ['major', 'mixolydian', 'lydian', 'dorian'], bpm: [90, 128], genres: ['Gospel', 'Pop', 'House', 'Cinematic', 'Afrobeats'], palettes: ['organ', 'cinema', 'neon', 'plucks'], grooves: ['straight', 'light', 'shuffle'] },
-  { id: 'angry', label: 'Angry', emoji: '⚡', modes: ['phrygian', 'minor', 'harmonic'], bpm: [130, 175], genres: ['Rock', 'Drill', 'Drum & bass', 'Phonk', 'Techno'], palettes: ['neon', 'cinema', 'bells'], grooves: ['straight'] },
-  { id: 'party', label: 'Party', emoji: '🎉', modes: ['minor', 'mixolydian', 'major', 'dorian'], bpm: [96, 128], genres: ['Reggaeton', 'House', 'Afrobeats', 'Amapiano', 'Club', 'Disco'], palettes: ['plucks', 'neon', 'organ'], grooves: ['straight', 'light', 'swung'] },
-  { id: 'focus', label: 'Focus', emoji: '🎯', modes: ['dorian', 'major', 'lydian', 'minor'], bpm: [72, 124], genres: ['Lo-fi', 'Techno', 'Jazz', 'House', 'Cinematic'], palettes: ['dusty', 'clean', 'vinyl', 'neon'], grooves: ['straight', 'light', 'swung'] },
+  { id: 'hype', label: 'Hype', emoji: '🔥', modes: ['minor', 'phrygian', 'harmonic', 'dorian'], bpm: [130, 150], genres: ['Trap', 'Drill', 'Phonk', 'Club', 'Rock'], palettes: ['bells', 'neon', 'cinema', 'gospeltrap', 'choirnight'], grooves: ['straight', 'light'] },
+  { id: 'chill', label: 'Chill', emoji: '🌊', modes: ['dorian', 'major', 'lydian', 'minor'], bpm: [70, 92], genres: ['Lo-fi', 'R&B', 'Jazz', 'Soul', 'Boom-bap'], palettes: ['dusty', 'vinyl', 'clean', 'tapesoul', 'glassgarden'], grooves: ['swung', 'lazy', 'light'] },
+  { id: 'happy', label: 'Happy', emoji: '☀️', modes: ['major', 'mixolydian', 'lydian'], bpm: [100, 128], genres: ['Pop', 'Afrobeats', 'Disco', 'Funk', 'Country'], palettes: ['plucks', 'neon', 'organ', 'clean', 'worldmix'], grooves: ['straight', 'light', 'swung'] },
+  { id: 'heartbreak', label: 'Heartbreak', emoji: '💔', modes: ['minor', 'dorian', 'harmonic'], bpm: [60, 90], genres: ['R&B', 'Ballad', 'Pop', 'Soul', 'Folk'], palettes: ['clean', 'bells', 'vinyl', 'tapesoul'], grooves: ['straight', 'lazy'] },
+  { id: 'romantic', label: 'Romantic', emoji: '🌹', modes: ['major', 'dorian', 'lydian'], bpm: [64, 96], genres: ['R&B', 'Soul', 'Reggaeton', 'Jazz', 'Afrobeats'], palettes: ['dusty', 'clean', 'plucks', 'tapesoul'], grooves: ['swung', 'light', 'lazy'] },
+  { id: 'nostalgic', label: 'Nostalgic', emoji: '📼', modes: ['major', 'mixolydian', 'dorian', 'minor'], bpm: [76, 110], genres: ['Synthwave', 'Lo-fi', 'Soul', 'Folk', 'Boom-bap'], palettes: ['vinyl', 'dusty', 'neon', 'tapesoul'], grooves: ['light', 'swung'] },
+  { id: 'dark', label: 'Dark', emoji: '🌑', modes: ['phrygian', 'minor', 'harmonic'], bpm: [64, 145], genres: ['Drill', 'Trap', 'Techno', 'Cinematic', 'Phonk'], palettes: ['bells', 'cinema', 'neon', 'choirnight', 'metalbow'], grooves: ['straight', 'light'] },
+  { id: 'dreamy', label: 'Dreamy', emoji: '☁️', modes: ['lydian', 'major', 'dorian'], bpm: [70, 110], genres: ['Lo-fi', 'Synthwave', 'Cinematic', 'R&B', 'House'], palettes: ['bells', 'clean', 'vinyl', 'shimmerfolk', 'glassgarden'], grooves: ['light', 'straight', 'swung'] },
+  { id: 'uplifting', label: 'Uplifting', emoji: '🚀', modes: ['major', 'mixolydian', 'lydian', 'dorian'], bpm: [90, 128], genres: ['Gospel', 'Pop', 'House', 'Cinematic', 'Afrobeats'], palettes: ['organ', 'cinema', 'neon', 'plucks', 'gospeltrap', 'shimmerfolk'], grooves: ['straight', 'light', 'shuffle'] },
+  { id: 'angry', label: 'Angry', emoji: '⚡', modes: ['phrygian', 'minor', 'harmonic'], bpm: [130, 175], genres: ['Rock', 'Drill', 'Drum & bass', 'Phonk', 'Techno'], palettes: ['neon', 'cinema', 'bells', 'metalbow', 'neonacid'], grooves: ['straight'] },
+  { id: 'party', label: 'Party', emoji: '🎉', modes: ['minor', 'mixolydian', 'major', 'dorian'], bpm: [96, 128], genres: ['Reggaeton', 'House', 'Afrobeats', 'Amapiano', 'Club', 'Disco'], palettes: ['plucks', 'neon', 'organ', 'neonacid', 'worldmix'], grooves: ['straight', 'light', 'swung'] },
+  { id: 'focus', label: 'Focus', emoji: '🎯', modes: ['dorian', 'major', 'lydian', 'minor'], bpm: [72, 124], genres: ['Lo-fi', 'Techno', 'Jazz', 'House', 'Cinematic'], palettes: ['dusty', 'clean', 'vinyl', 'neon', 'glassgarden'], grooves: ['straight', 'light', 'swung'] },
 ];
 export const moodById = (id: string) => MOODS.find((m) => m.id === id);
 
@@ -194,6 +197,12 @@ export function keySemitoneDelta(fromKey: string, toKey: string): number {
   while (d > 6) d -= 12;
   while (d < -6) d += 12;
   return d;
+}
+
+/** Spell the tonic after a section transpose, keeping the source key's sharp/flat preference. */
+export function keyAfterTranspose(keyName: string, semitones: number): string {
+  const pc = (keyIndex(keyName) + semitones + 120) % 12;
+  return pitchClassName(pc, keyName);
 }
 
 /** MIDI note of scale degree `deg` (can be negative or > 6) for the key/mode, around `baseOct` (C4 = 60 means octave 4). */

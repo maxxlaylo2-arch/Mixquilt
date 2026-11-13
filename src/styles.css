@@ -187,6 +187,19 @@ h3 { font-size: .9rem; margin: 12px 0 6px; color: var(--muted); text-transform: 
 .layer.l-drums.on { background: var(--drums); } .layer.l-bass.on { background: var(--bass); } .layer.l-chords.on { background: var(--chords); }
 .layer.l-melody.on { background: var(--melody); } .layer.l-vocals.on { background: var(--vocals); }
 .mixer { display: grid; gap: 10px; }
+.sound-open { width: 100%; justify-content: flex-start; text-align: left; font-size: .85rem; min-height: 44px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.macros { display: flex; flex-direction: column; gap: 2px; }
+.macros label { display: grid; grid-template-columns: 92px 1fr; gap: 6px; align-items: center; font-size: .72rem; color: var(--muted); }
+.macros b { font-variant-numeric: tabular-nums; color: var(--text); font-weight: 700; }
+.sound-sheet { max-height: 90vh; }
+.sound-cats { display: flex; flex-wrap: wrap; gap: 6px; }
+.sound-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.sound-list h3 { margin: 8px 0 4px; }
+.sound-item { display: flex; align-items: stretch; gap: 8px; padding: 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg2); margin: 4px 0; }
+.sound-item.on { border-color: var(--accent); background: #3a2c17; }
+.sound-pick { flex: 1; border: 0; background: transparent; text-align: left; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 0; }
+.sound-pick b { font-size: .95rem; }
+
 .strip { background: var(--bg2); border: 1px solid var(--line); border-radius: 12px; padding: 10px; border-left: 6px solid var(--muted); display: flex; flex-direction: column; gap: 6px; }
 .strip.l-drums { border-left-color: var(--drums); } .strip.l-bass { border-left-color: var(--bass); } .strip.l-chords { border-left-color: var(--chords); }
 .strip.l-melody { border-left-color: var(--melody); } .strip.l-vocals { border-left-color: var(--vocals); } .strip.master { border-left-color: var(--accent); }

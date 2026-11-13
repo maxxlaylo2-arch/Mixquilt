@@ -1,6 +1,6 @@
 // Unit tests for key-aware spelling and key-change intervals.
 // Run: node tests/theory.test.mjs
-import { midiToName, pitchClassName, keySemitoneDelta, chordName } from '../src/theory.ts';
+import { midiToName, pitchClassName, keySemitoneDelta, chordName, keyAfterTranspose } from '../src/theory.ts';
 
 const results = [];
 const ok = (name, cond, extra = '') => {
@@ -24,5 +24,7 @@ ok('C → F♯ is +6', keySemitoneDelta('C', 'F♯') === 6, String(keySemitoneDe
 ok('F♯ → C is −6 (same register)', keySemitoneDelta('F♯', 'C') === -6, String(keySemitoneDelta('F♯', 'C')));
 ok('C → B is −1, not +11', keySemitoneDelta('C', 'B') === -1, String(keySemitoneDelta('C', 'B')));
 ok('A♭ → E♭ is −5', keySemitoneDelta('A♭', 'E♭') === -5, String(keySemitoneDelta('A♭', 'E♭')));
+ok('C +2 snaps to D', keyAfterTranspose('C', 2) === 'D', keyAfterTranspose('C', 2));
+ok('A♭ +2 snaps to B♭', keyAfterTranspose('A♭', 2) === 'B♭', keyAfterTranspose('A♭', 2));
 
 console.log(`\n${results.filter((r) => r.startsWith('PASS')).length}/${results.length} passed`);

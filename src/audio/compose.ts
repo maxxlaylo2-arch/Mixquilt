@@ -25,18 +25,29 @@ export function sectionAtBeat(s: Song, beat: number): { section: Section; index:
   return null;
 }
 
-/** Transpose (semitones) of the section a vocal take sits in, from its start time or section label. */
+/** Recording trims at most this much pre-roll before the chosen section start. */
+export const TAKE_PREROLL_SEC = 0.25;
+
+/** Transpose (semitones) of the section a vocal take sits in.
+ *  Takes recorded with “Start at <section>” can be saved up to TAKE_PREROLL_SEC
+ *  before the section, so we ignore that pre-roll and prefer the saved section label. */
 export function takeSectionTranspose(t: { start: number; section?: string }, s: Song): number {
-  const beat = Math.max(0, t.start) / secPerBeat(s);
+  const keys = lyricKeys(s.sections);
+  const beat = Math.max(0, t.start + TAKE_PREROLL_SEC) / secPerBeat(s);
   const at = sectionAtBeat(s, beat);
-  if (at) return at.section.transpose || 0;
   if (t.section) {
-    const keys = lyricKeys(s.sections);
+    if (at && (keys[at.index] === t.section || at.section.type === t.section)) return at.section.transpose || 0;
+    // Prefer the matching section at or after the pre-roll-adjusted time (not an earlier same-named hook).
+    const from = at ? at.index : 0;
+    for (let i = from; i < s.sections.length; i++) {
+      if (keys[i] === t.section || s.sections[i].type === t.section) return s.sections[i].transpose || 0;
+    }
     const i = keys.indexOf(t.section);
     if (i >= 0) return s.sections[i].transpose || 0;
     const byType = s.sections.find((sec) => sec.type === t.section);
     if (byType) return byType.transpose || 0;
   }
+  if (at) return at.section.transpose || 0;
   return 0;
 }
 

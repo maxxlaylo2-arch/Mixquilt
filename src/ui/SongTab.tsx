@@ -1,10 +1,11 @@
 import { useState } from 'preact/hooks';
 import { getSong, replaceSong, update, useSong } from '../store';
 import { lyricKeys, makeSection, TRACKS, uid, type Song, type TrackId } from '../model';
-import { BASS_OPTIONS, CHORD_OPTIONS, KIT_OPTIONS, LEAD_OPTIONS, SECTION_TYPES, instrumentDefaults, type SectionType } from '../theory';
+import { SECTION_TYPES, type SectionType } from '../theory';
 import { Card, Select, Stepper } from './common';
 import { setUi, toast } from './ui';
-import { play, refreshInstruments, refreshMix, stop } from '../audio/engine';
+import { play, refreshMix } from '../audio/engine';
+import { MacroSliders, SoundPicker, currentVoiceName } from './SoundPicker';
 import { sectionStartBeat } from '../audio/compose';
 import { download, encodeWav, exportMidi, exportStemsZip, renderSong, safeName } from '../audio/export';
 import { LegalSheet, type LegalPage } from './LegalSheet';
@@ -62,14 +63,14 @@ function Arrange() {
 
 function Mixer() {
   const s = useSong();
-  const instOpts: Partial<Record<TrackId, string[][]>> = { drums: KIT_OPTIONS, bass: BASS_OPTIONS, chords: CHORD_OPTIONS, melody: LEAD_OPTIONS };
-  const defaults = instrumentDefaults(s.recipe.palette);
+  const [pick, setPick] = useState<'drums' | 'bass' | 'chords' | 'melody' | null>(null);
   const mix = (fn: (x: Song) => void, text: string) => { update(fn, ['mix', text]); refreshMix(); };
   return (
-    <Card title="Mixer" sub="Volume, mute and solo for each track. All sounds are made in the app.">
+    <Card title="Mixer" sub="Volume, mute, solo, and a sound library for every track. All sounds are made in the app.">
       <div class="mixer">
         {TRACKS.map((t) => {
           const m = s.mix[t.id];
+          const canPick = t.id === 'drums' || t.id === 'bass' || t.id === 'chords' || t.id === 'melody';
           return (
             <div class={'strip l-' + t.id} key={t.id}>
               <div class="strip-head">
@@ -79,10 +80,12 @@ function Mixer() {
               </div>
               <input type="range" class="range" min={0} max={1} step={0.01} value={m.vol} aria-label={`${t.label} volume`}
                 onInput={(e) => mix((x) => { x.mix[t.id].vol = Number((e.target as HTMLInputElement).value); }, `Set ${t.label} volume`)} />
-              {instOpts[t.id] && (
-                <Select label={`${t.label} sound`} value={m.inst ?? ''} options={[['', `Palette: ${(instOpts[t.id]!.find((o) => o[0] === (defaults as any)[t.id]) ?? ['', ''])[1]}`], ...(instOpts[t.id] as [string, string][])]}
-                  onChange={async (v) => { update((x) => { x.mix[t.id].inst = v || undefined; }, ['mix', `Changed ${t.label} sound`]); await stop(); await refreshInstruments(); }} />
+              {canPick && (
+                <button class="btn sound-open" data-testid={'sound-open-' + t.id} onClick={() => setPick(t.id as 'drums' | 'bass' | 'chords' | 'melody')}>
+                  {currentVoiceName(t.id as 'drums' | 'bass' | 'chords' | 'melody', m.inst, s.recipe.palette)}
+                </button>
               )}
+              <MacroSliders track={t.id} />
             </div>
           );
         })}
@@ -92,6 +95,7 @@ function Mixer() {
             onInput={(e) => mix((x) => { x.mix.master = Number((e.target as HTMLInputElement).value); }, 'Set master volume')} />
         </div>
       </div>
+      {pick && <SoundPicker track={pick} onClose={() => setPick(null)} />}
     </Card>
   );
 }

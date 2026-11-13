@@ -6,6 +6,8 @@ import { toast } from './ui';
 import { describeSettings, polishedBuffer, presetSettings, PRESETS, type PresetId, type VoicePolishSettings } from '../audio/voicePolish';
 import type { PolishReport, Space } from '../audio/polishDsp';
 import { polishContext, rawTakeBuffer } from '../audio/takes';
+import { takeSectionTranspose } from '../audio/compose';
+import { keyAfterTranspose, modeById } from '../theory';
 import { nativeContext } from '../audio/engine';
 import { IconPlay, IconStop } from './icons';
 
@@ -147,7 +149,13 @@ export function VoicePolishSheet(p: { take: Take; onClose: () => void }) {
               <div class="row wrap"><span class="muted small">Space</span>
                 <Seg label="Space" value={settings.space} onChange={(v) => tweak({ space: v as Space })} options={[['none', 'None'], ['room', 'Room'], ['echo', 'Echo'], ['both', 'Both']]} />
               </div>
-              <p class="muted tiny">Tuning snaps to {s.recipe.key} {s.recipe.mode}. Echo is timed to {s.recipe.bpm} BPM.</p>
+              {(() => {
+                const trans = takeSectionTranspose(take, s);
+                const snapKey = keyAfterTranspose(s.recipe.key, trans);
+                const mode = modeById(s.recipe.mode).name;
+                const lift = trans ? ` (${trans > 0 ? '+' : ''}${trans} from ${s.recipe.key})` : '';
+                return <p class="muted tiny" data-testid="polish-tuning-key">Tuning snaps to {snapKey} {s.recipe.mode}{lift}. Echo is timed to {s.recipe.bpm} BPM. Scale: {mode}.</p>;
+              })()}
             </details>
           </>
         )}

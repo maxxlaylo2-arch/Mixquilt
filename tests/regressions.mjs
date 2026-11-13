@@ -138,7 +138,46 @@ const afterScroll = await page.evaluate(() => {
 ok('Perc and Bass can be scrolled fully clear of the transport', afterScroll.perc && afterScroll.bass, JSON.stringify(afterScroll));
 await page.screenshot({ path: `${SHOTS}/mobile-beat-layout-390x844-scrolled.png`, fullPage: false });
 
+// --- Pre-roll window should not steal the next section's transpose ---
+const preroll = await page.evaluate(() => {
+  const mq = window.__mq;
+  mq.update((s) => {
+    s.recipe.key = 'C';
+    s.recipe.mode = 'major';
+    s.recipe.bpm = 140;
+    s.sections = [
+      { id: 'v', type: 'Verse', bars: 8, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Verse', transpose: 0 },
+      { id: 'h', type: 'Hook', bars: 8, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Hook', transpose: 2 },
+    ];
+  });
+  const hookStart = 8 * 4 * 60 / 140;
+  const take = { id: 'pre', name: 'Hook take', createdAt: '', start: hookStart - 0.24, duration: 2, sampleRate: 44100, active: true, section: 'Hook', polish: null };
+  const trans = mq.takeSectionTranspose(take, mq.getSong());
+  const ctx = mq.polishContext(take, mq.getSong());
+  const key = mq.keyAfterTranspose('C', trans);
+  return { hookStart, trans, ctxT: ctx.transpose, key, preroll: mq.TAKE_PREROLL_SEC, nVoices: (mq.VOICES || []).length };
+});
+ok('Pre-roll take (0.24s before a +2 hook) uses hook transpose 2, not the previous section', preroll.trans === 2 && preroll.ctxT === 2, JSON.stringify(preroll));
+ok('Effective snap key for C +2 is D', preroll.key === 'D', JSON.stringify(preroll));
+ok('Voice catalog is loaded on the test hook', preroll.nVoices >= 80, String(preroll.nVoices));
+
+// --- Sound picker ---
+await page.click('[data-tab="song"]');
+await page.click('[data-testid="sound-open-chords"]');
+await page.waitForSelector('[data-testid="sound-picker"]');
+const picker = await page.evaluate(() => {
+  const sheet = document.querySelector('[data-testid="sound-picker"]');
+  const items = [...sheet.querySelectorAll('.sound-item b')].map((el) => el.textContent);
+  const cats = [...sheet.querySelectorAll('.sound-cats .chip')].map((el) => el.textContent);
+  const macros = !!document.querySelector('[data-testid="macros-chords"]');
+  return { items: items.slice(0, 8), nItems: items.length, cats, macros, w: sheet.getBoundingClientRect().width };
+});
+ok('Sound picker lists grouped presets on a 390×844 phone', picker.nItems >= 10 && picker.cats.includes('All') && picker.macros, JSON.stringify(picker));
+await page.screenshot({ path: `${SHOTS}/mobile-sound-picker-390x844.png`, fullPage: false });
+await page.click('.sound-sheet button:has-text("Close")');
+
 ok('No page or console errors during regressions', errors.length === 0, errors.join(' | '));
+
 
 console.log('\nSUMMARY');
 for (const l of results) console.log(l);

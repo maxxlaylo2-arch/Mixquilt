@@ -26,7 +26,7 @@ export const TRACKS: { id: TrackId; label: string }[] = [
   { id: 'melody', label: 'Melody' },
   { id: 'vocals', label: 'Vocals' },
 ];
-export interface MixTrack { vol: number; mute: boolean; solo: boolean; inst?: string }
+export interface MixTrack { vol: number; mute: boolean; solo: boolean; inst?: string; tone?: number; drive?: number; character?: number }
 
 export interface Section {
   id: string;

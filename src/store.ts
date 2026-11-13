@@ -73,7 +73,11 @@ export async function initStore() {
 }
 function migrate(s: Song): Song {
   const d = newSong();
-  return { ...d, ...s, mix: { ...d.mix, ...s.mix }, credits: s.credits ?? d.credits };
+  const mix = { ...d.mix, ...s.mix } as Song['mix'];
+  for (const id of ['drums', 'bass', 'chords', 'melody', 'vocals'] as const) {
+    mix[id] = { ...d.mix[id], ...mix[id] };
+  }
+  return { ...d, ...s, mix, credits: s.credits ?? d.credits };
 }
 
 export async function openSong(id: string) {
