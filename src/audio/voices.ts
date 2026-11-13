@@ -111,7 +111,8 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
       synth!.volume.value = -2; break;
     case 'wurli':
       finish(add(new Tone.PolySynth(Tone.FMSynth, { harmonicity: 1.5, modulationIndex: 5.5, envelope: env(0.002, 0.9, 0.15, 0.6), modulationEnvelope: env(0.002, 0.35, 0.05, 0.4) } as any)), [add(new Tone.Filter(2600, 'lowpass')), add(new Tone.Chebyshev(3))]);
-      synth!.volume.value = -8; break;
+      // Raised from -8 toward the library median peak (~0.20); sibling of rhodes/tapepiano at -2.
+      synth!.volume.value = -2; break;
     case 'churchorg':
       finish(add(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'custom', partials: [1, 0.6, 0.35, 0.2, 0.15, 0.08, 0.06] } as any, envelope: env(0.04, 0.2, 0.95, 0.8) })), [add(new Tone.Filter(3500, 'lowpass')), add(new Tone.Chorus({ frequency: 0.7, delayTime: 5, depth: 0.2, wet: 0.2 }))]);
       synth!.volume.value = -14; break;
