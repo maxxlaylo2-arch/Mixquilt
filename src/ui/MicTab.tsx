@@ -5,6 +5,7 @@ import { Card, NextStep, Select } from './common';
 import { setUi, toast, useEmitter } from './ui';
 import { heardBeat, isPlaying, onEngine, play, settings, stop } from '../audio/engine';
 import { sectionAtBeat, sectionStartBeat } from '../audio/compose';
+import { trimTakeToSection } from '../audio/takeTiming';
 import { calibrate, releaseMic, estimatedLatencySec, getExtraLatencyMs, setExtraLatencyMs, startRecording, totalLatencySec, type Recording } from '../audio/mic';
 import { deleteTakeAudio, previewTake, saveTakeAudio, stopPreview } from '../audio/takes';
 import { PRESETS, type VoicePolishSettings } from '../audio/voicePolish';
@@ -83,9 +84,9 @@ export function MicTab() {
     if (!r) { releaseMic(); return; }
     const { data, firstTime, sampleRate } = await r.rec.stop();
     let start = r.songSec + (firstTime - r.ctxStart) - totalLatencySec();
-    const trim = Math.max(0, Math.floor((r.songSec - 0.25 - start) * sampleRate));
-    const pcm = data.subarray(Math.min(trim, data.length));
-    start += trim / sampleRate;
+    const trimmed = trimTakeToSection(start, r.songSec, sampleRate);
+    const pcm = data.subarray(Math.min(trimmed.trimSamples, data.length));
+    start = trimmed.start;
     if (pcm.length < sampleRate * 0.3) { toast('Take was too short, so it was not saved.'); return; }
     const id = uid();
     await saveTakeAudio(id, pcm.slice());

@@ -3,6 +3,8 @@
 import type { Section, Song, StepVal } from '../model';
 import { DRUM_ROWS, STEPS } from '../model';
 import { chordMidis, degreeToMidi, grooveById } from '../theory';
+import { TAKE_PREROLL_SEC, takeLookupTime } from './takeTiming';
+export { TAKE_PREROLL_SEC, TAKE_SECTION_SLOP_SEC, takeLookupTime, trimTakeToSection, trimTakeToSectionFloor } from './takeTiming';
 
 export type Ev =
   | { kind: 'drum'; row: string; t: number; v: number }
@@ -25,15 +27,13 @@ export function sectionAtBeat(s: Song, beat: number): { section: Section; index:
   return null;
 }
 
-/** Recording trims at most this much pre-roll before the chosen section start. */
-export const TAKE_PREROLL_SEC = 0.25;
-
 /** Transpose (semitones) of the section a vocal take sits in.
  *  Takes recorded with “Start at <section>” can be saved up to TAKE_PREROLL_SEC
- *  before the section, so we look up by time after ignoring that pre-roll.
+ *  before the section, so we look up by time after ignoring that pre-roll,
+ *  plus a small slop so a floor-rounded sample trim still lands in the section.
  *  Matching is by section time range (index), never by repeated names like Hook/Hook. */
 export function takeSectionTranspose(t: { start: number; section?: string }, s: Song): number {
-  const beat = Math.max(0, t.start + TAKE_PREROLL_SEC) / secPerBeat(s);
+  const beat = takeLookupTime(t.start) / secPerBeat(s);
   const at = sectionAtBeat(s, beat);
   if (at) return at.section.transpose || 0;
   if (s.sections.length) return s.sections[s.sections.length - 1].transpose || 0;

@@ -14,6 +14,10 @@ playwright-report/
 *.zip
 *.pdf
 
+# checked-in golden renders used by tests/regressions.mjs
+!tests/fixtures/
+!tests/fixtures/*.wav
+
 # large source data rebuilt by `npm run build:dict`
 scripts/cmudict.dict
 

@@ -2,7 +2,7 @@
 import * as Tone from 'tone';
 import type { Song, TrackId } from '../model';
 import { paletteById } from '../theory';
-import { toneCutoffHz } from './macros';
+import { macrosForTrack, sendLevel, toneCutoffHz, type MacroTrack } from './macros';
 import { makeBass, makeKit, makePoly, type Inst, type Kit } from './voices';
 export { toneCutoffHz } from './macros';
 
@@ -83,13 +83,14 @@ export class Rig {
       let audible = !m.mute && (!anySolo || m.solo);
       if (soloOnly) audible = soloOnly.includes(id) && !m.mute;
       c.mute = !audible;
-      const tone = m.tone ?? 0.5;
-      const drive = m.drive ?? 0.2;
-      const character = m.character ?? 0.5;
+      const macros = macrosForTrack(song.mix, id as MacroTrack);
+      const { tone, drive, character } = macros;
       this.tone[id].frequency.rampTo(toneCutoffHz(tone), 0.05);
-      this.drive[id].distortion = Math.max(0.001, drive * 0.65);
+      // Drive 0 must be a true bypass; a 0.001 residual still colors the sound.
+      this.drive[id].distortion = drive <= 0 ? 0 : drive * 0.65;
+      this.drive[id].wet.value = drive <= 0 ? 0 : 1;
       this.chor[id].wet.rampTo(id === 'drums' || id === 'bass' ? character * 0.12 : character * 0.45, 0.05);
-      this.sends[id].gain.rampTo(this.sendBase[id] * (0.45 + character * 1.1), 0.05);
+      this.sends[id].gain.rampTo(sendLevel(id as MacroTrack, character), 0.05);
     }
     this.masterGain.gain.value = song.mix.master;
   }

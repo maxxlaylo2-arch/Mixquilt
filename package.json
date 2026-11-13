@@ -10,7 +10,9 @@
     "smoke": "node tests/smoke.mjs",
     "test:polish": "node tests/polish-dsp.test.mjs",
     "test:theory": "node tests/theory.test.mjs",
+    "test:preroll": "node tests/preroll.test.mjs",
     "test:voices": "node tests/levels.mjs",
+    "regressions": "node tests/regressions.mjs",
     "build:native": "BASE_PATH=./ npm run build",
     "notices": "node scripts/gen-notices.mjs"
   },

@@ -1,6 +1,8 @@
 // Playwright regressions for the 2026-11-13 bug-fix pass. Needs the preview server.
 import { chromium } from 'playwright';
 import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 const URL = process.env.MQ_URL || 'http://localhost:4173/Mixquilt/';
 const SHOTS = process.env.MQ_SHOTS || '/workspace/mixquilt-guidebook/test-beats/screenshots';
 fs.mkdirSync(SHOTS, { recursive: true });
@@ -184,6 +186,46 @@ ok('Hook@0 then Hook@+2: a take inside the second Hook uses +2, not the shared n
 ok('Hook@0 then Hook@+2: a take 0.24s before the second Hook (pre-roll) uses +2', hooks.prerollSecond === 2, JSON.stringify(hooks));
 ok('toneCutoffHz default is transparent on the test hook', hooks.toneDef >= 16000 && hooks.tone0 < 1000, JSON.stringify(hooks));
 
+// --- Mic-tab floor-rounded pre-roll (already-saved takes) must still pick the next section ---
+const floorTrim = await page.evaluate(() => {
+  const mq = window.__mq;
+  const out = [];
+  const setups = [
+    { sr: 44100, bpm: 140, bars1: 8 },
+    { sr: 48000, bpm: 140, bars1: 8 },
+    { sr: 44100, bpm: 128, bars1: 16 },
+    { sr: 48000, bpm: 90, bars1: 8 },
+  ];
+  for (const cfg of setups) {
+    mq.update((s) => {
+      s.recipe.bpm = cfg.bpm;
+      s.sections = [
+        { id: 'h1', type: 'Hook', bars: cfg.bars1, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Hook', transpose: 0 },
+        { id: 'h2', type: 'Hook', bars: 8, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Hook', transpose: 2 },
+      ];
+    });
+    const sectionStart = cfg.bars1 * 4 * 60 / cfg.bpm;
+    const recStart = sectionStart - 4 * 60 / cfg.bpm; // count-in
+    const floored = mq.trimTakeToSectionFloor(recStart, sectionStart, cfg.sr);
+    const ceiled = mq.trimTakeToSection(recStart, sectionStart, cfg.sr);
+    const transFloor = mq.takeSectionTranspose({ start: floored.start, section: 'Hook' }, mq.getSong());
+    const transCeil = mq.takeSectionTranspose({ start: ceiled.start, section: 'Hook' }, mq.getSong());
+    const trans024 = mq.takeSectionTranspose({ start: sectionStart - 0.24, section: 'Hook' }, mq.getSong());
+    out.push({
+      ...cfg, sectionStart, floorStart: floored.start, ceilStart: ceiled.start,
+      floorLookup: floored.start + mq.TAKE_PREROLL_SEC,
+      earlyBy: sectionStart - (floored.start + mq.TAKE_PREROLL_SEC),
+      transFloor, transCeil, trans024,
+    });
+  }
+  return out;
+});
+for (const row of floorTrim) {
+  ok(`Floor-trim + slop at ${row.sr}Hz ${row.bpm}bpm (${row.bars1} bars) uses Hook@+2, not the previous Hook`,
+    row.transFloor === 2 && row.transCeil === 2 && row.trans024 === 2, JSON.stringify(row));
+}
+
+
 // --- Default Tone is spectrally bright (not the old ~3.3 kHz dull default) ---
 const bright = await page.evaluate(async () => {
   const mq = window.__mq;
@@ -257,7 +299,112 @@ ok('Sound picker lists grouped presets on a 390×844 phone', picker.nItems >= 10
 await page.screenshot({ path: `${SHOTS}/mobile-sound-picker-390x844.png`, fullPage: false });
 await page.click('.sound-sheet button:has-text("Close")');
 
+// --- Legacy mix (no saved macros) must match pre-library sound, not the new Drive/Character defaults ---
+const GOLDEN = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'legacy-pre-library.wav');
+const legacy = await page.evaluate(async () => {
+  const mq = window.__mq;
+  const stats = (buf) => {
+    const d = buf.getChannelData(0);
+    let peak = 0, sum = 0, hf = 0, prev = 0, y = 0;
+    const sr = buf.sampleRate, rc = 1 / (2 * Math.PI * 8000), dt = 1 / sr, a = rc / (rc + dt);
+    for (let i = 0; i < d.length; i++) {
+      const x = d[i]; const ax = Math.abs(x); if (ax > peak) peak = ax;
+      sum += x * x;
+      y = a * (y + x - prev); prev = x; hf += y * y;
+    }
+    return { peak, rms: Math.sqrt(sum / d.length), hf: Math.sqrt(hf / d.length), len: d.length, sr: buf.sampleRate };
+  };
+  // Install the fixture (inlined to avoid bundling).
+  mq.update((s) => {
+    s.title = 'Legacy Fixture';
+    s.recipe.mood = 'chill'; s.recipe.key = 'C'; s.recipe.mode = 'major'; s.recipe.bpm = 120;
+    s.recipe.groove = 'straight'; s.recipe.progression = 'anthem'; s.recipe.palette = 'dusty';
+    s.recipe.chordRhythm = 'sustain';
+    s.chords = [{ deg: 0 }, { deg: 4 }, { deg: 5 }, { deg: 3 }];
+    s.sections = [{ id: 'h', type: 'Hook', bars: 2, layers: { drums: true, bass: true, chords: true, melody: true, vocals: false }, beat: 'A', part: 'Hook', transpose: 0 }];
+    s.parts = { Hook: [{ t: 0, d: 1.2, m: 72, v: 0.85 }, { t: 2, d: 0.8, m: 76, v: 0.7 }, { t: 4, d: 1.5, m: 79, v: 0.8 }, { t: 8, d: 2, m: 72, v: 0.85 }] };
+    s.takes = [];
+    const pat = (fill) => Array.from({ length: 16 }, (_, i) => fill(i) ? 1 : 0);
+    s.beats.A.kick = pat((i) => i === 0 || i === 8);
+    s.beats.A.snare = pat((i) => i === 4 || i === 12);
+    s.beats.A.hat = pat((i) => i % 2 === 0);
+    s.beats.A.clap = pat(() => false);
+    s.beats.A.open = pat((i) => i === 14);
+    s.beats.A.perc = pat((i) => i === 6);
+    s.beats.A.bass = pat((i) => i === 0 || i === 6 || i === 8 || i === 12);
+    for (const id of ['drums', 'bass', 'chords', 'melody', 'vocals']) {
+      delete s.mix[id].tone; delete s.mix[id].drive; delete s.mix[id].character;
+      s.mix[id].inst = undefined; s.mix[id].mute = false; s.mix[id].solo = false;
+    }
+    s.mix.drums.vol = 0.8; s.mix.bass.vol = 0.75; s.mix.chords.vol = 0.6; s.mix.melody.vol = 0.7; s.mix.vocals.vol = 0.9; s.mix.master = 0.85;
+  });
+  const has = mq.mixHasMacros(mq.getSong().mix);
+  const macros = mq.macrosForTrack(mq.getSong().mix, 'drums');
+  const migrated = mq.migrateSong(JSON.parse(JSON.stringify(mq.getSong())));
+  const bufLegacy = await mq.renderSong(mq.getSong());
+  mq.update((s) => {
+    for (const id of ['drums', 'bass', 'chords', 'melody', 'vocals']) Object.assign(s.mix[id], mq.DEFAULT_MACROS);
+  });
+  const bufNew = await mq.renderSong(mq.getSong());
+  // wav of the no-macro render
+  const ch = Math.min(2, bufLegacy.numberOfChannels), len = bufLegacy.length, sr = bufLegacy.sampleRate;
+  const dataLen = len * ch * 2;
+  const ab = new ArrayBuffer(44 + dataLen);
+  const v = new DataView(ab);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + dataLen, true); w(8, 'WAVE'); w(12, 'fmt ');
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, ch, true); v.setUint32(24, sr, true);
+  v.setUint32(28, sr * ch * 2, true); v.setUint16(32, ch * 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, dataLen, true);
+  const chans = Array.from({ length: ch }, (_, i) => bufLegacy.getChannelData(i));
+  let o = 44;
+  for (let i = 0; i < len; i++) for (let c = 0; c < ch; c++) {
+    const x = Math.max(-1, Math.min(1, chans[c][i]));
+    v.setInt16(o, x < 0 ? x * 0x8000 : x * 0x7fff, true); o += 2;
+  }
+  const bytes = new Uint8Array(ab);
+  let bin = '';
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return {
+    has, macros, migrated: mq.macrosForTrack(migrated.mix, 'drums'),
+    stLegacy: stats(bufLegacy), stNew: stats(bufNew), wavB64: btoa(bin),
+  };
+});
+ok('A song with no saved macros is treated as legacy (drive 0, character 0)',
+  legacy.has === false && legacy.macros.legacy === true && legacy.macros.drive === 0 && legacy.macros.character === 0,
+  JSON.stringify({ has: legacy.has, macros: legacy.macros }));
+ok('migrate() writes legacy-neutral macros onto a pre-library song',
+  legacy.migrated.drive === 0 && legacy.migrated.character === 0 && legacy.migrated.tone === 0.5,
+  JSON.stringify(legacy.migrated));
+ok('Legacy mix render differs from the new Drive/Character defaults (not accidentally the same path)',
+  Math.abs(legacy.stLegacy.rms - legacy.stNew.rms) / Math.max(legacy.stNew.rms, 1e-6) > 0.02
+    || Math.abs(legacy.stLegacy.hf - legacy.stNew.hf) / Math.max(legacy.stNew.hf, 1e-6) > 0.02,
+  JSON.stringify({ legacy: legacy.stLegacy, neu: legacy.stNew }));
+
+if (fs.existsSync(GOLDEN)) {
+  const golden = fs.readFileSync(GOLDEN);
+  const got = Buffer.from(legacy.wavB64, 'base64');
+  const readStats = (buf) => {
+    const n = (buf.length - 44) / 2;
+    let peak = 0, sum = 0;
+    for (let i = 0; i < n; i++) {
+      const s = buf.readInt16LE(44 + i * 2) / 32768;
+      const a = Math.abs(s); if (a > peak) peak = a;
+      sum += s * s;
+    }
+    return { peak, rms: Math.sqrt(sum / n), bytes: buf.length };
+  };
+  const g = readStats(golden), c = readStats(got);
+  const relRms = Math.abs(g.rms - c.rms) / Math.max(g.rms, 1e-6);
+  const relPeak = Math.abs(g.peak - c.peak) / Math.max(g.peak, 1e-6);
+  ok('Legacy render is close to the pre-library (6b83602) golden WAV',
+    g.bytes === c.bytes && relRms < 0.05 && relPeak < 0.25,
+    JSON.stringify({ golden: g, current: c, relRms, relPeak }));
+} else {
+  ok('Pre-library golden WAV is present for a null/close test', false, `missing ${GOLDEN}`);
+}
+
 ok('No page or console errors during regressions', errors.length === 0, errors.join(' | '));
+
 
 
 console.log('\nSUMMARY');

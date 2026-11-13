@@ -2,6 +2,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { db } from './db';
 import type { Song } from './model';
 import { newSong } from './model';
+import { LEGACY_MACROS, MACRO_TRACKS, mixHasMacros } from './audio/macros';
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -71,11 +72,13 @@ export async function initStore() {
   }
   emit();
 }
-function migrate(s: Song): Song {
+export function migrate(s: Song): Song {
   const d = newSong();
+  const legacy = !mixHasMacros(s.mix);
   const mix = { ...d.mix, ...s.mix } as Song['mix'];
-  for (const id of ['drums', 'bass', 'chords', 'melody', 'vocals'] as const) {
-    mix[id] = { ...d.mix[id], ...mix[id] };
+  for (const id of MACRO_TRACKS) {
+    mix[id] = { ...d.mix[id], ...(s.mix?.[id] ?? {}) };
+    if (legacy) mix[id] = { ...mix[id], ...LEGACY_MACROS };
   }
   return { ...d, ...s, mix, credits: s.credits ?? d.credits };
 }
