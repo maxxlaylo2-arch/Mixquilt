@@ -2,7 +2,9 @@
 import * as Tone from 'tone';
 import type { Song, TrackId } from '../model';
 import { paletteById } from '../theory';
+import { toneCutoffHz } from './macros';
 import { makeBass, makeKit, makePoly, type Inst, type Kit } from './voices';
+export { toneCutoffHz } from './macros';
 
 export function instrumentChoice(song: Song) {
   const p = paletteById(song.recipe.palette);
@@ -15,9 +17,6 @@ export function instrumentChoice(song: Song) {
 }
 
 export const rigSignature = (song: Song) => JSON.stringify(instrumentChoice(song));
-
-const TONE_MIN = 700;
-const TONE_MAX = 16000;
 
 export class Rig {
   channels: Record<TrackId, Tone.Channel>;
@@ -50,6 +49,7 @@ export class Rig {
       const drive = new Tone.Distortion(0.01);
       const tone = new Tone.Filter(8000, 'lowpass');
       const chor = new Tone.Chorus({ frequency: 0.8, delayTime: 3, depth: 0.35, wet: 0 });
+      chor.start();
       c.chain(drive, tone, chor, this.masterGain);
       const send = new Tone.Gain(this.sendBase[id]);
       chor.connect(send);
@@ -86,8 +86,7 @@ export class Rig {
       const tone = m.tone ?? 0.5;
       const drive = m.drive ?? 0.2;
       const character = m.character ?? 0.5;
-      const hz = TONE_MIN * Math.pow(TONE_MAX / TONE_MIN, tone);
-      this.tone[id].frequency.rampTo(hz, 0.05);
+      this.tone[id].frequency.rampTo(toneCutoffHz(tone), 0.05);
       this.drive[id].distortion = Math.max(0.001, drive * 0.65);
       this.chor[id].wet.rampTo(id === 'drums' || id === 'bass' ? character * 0.12 : character * 0.45, 0.05);
       this.sends[id].gain.rampTo(this.sendBase[id] * (0.45 + character * 1.1), 0.05);
@@ -99,6 +98,9 @@ export class Rig {
 
   dispose() {
     this.kit.dispose(); this.bass.dispose(); this.chords.dispose(); this.lead.dispose();
+    for (const id of Object.keys(this.chor) as (keyof typeof this.chor)[]) {
+      try { this.chor[id].stop(); } catch { /* already stopped */ }
+    }
     this.disposables.forEach((d) => d.dispose());
   }
 }

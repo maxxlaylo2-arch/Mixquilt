@@ -29,4 +29,5 @@ import { setUi, ui } from './ui/ui';
 import { takeSectionTranspose, TAKE_PREROLL_SEC } from './audio/compose';
 import { VOICES, voiceById } from './audio/library';
 import { keyAfterTranspose } from './theory';
-(window as any).__mq = { getSong, update, renderSong, runPolish, trackPitch, applyRecipe, applyTempo, polishContext, contextMode, midiToName, setUi, ui, takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, keyAfterTranspose };
+import { toneCutoffHz } from './audio/macros';
+(window as any).__mq = { getSong, update, renderSong, runPolish, trackPitch, applyRecipe, applyTempo, polishContext, contextMode, midiToName, setUi, ui, takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, keyAfterTranspose, toneCutoffHz };

@@ -161,7 +161,88 @@ ok('Pre-roll take (0.24s before a +2 hook) uses hook transpose 2, not the previo
 ok('Effective snap key for C +2 is D', preroll.key === 'D', JSON.stringify(preroll));
 ok('Voice catalog is loaded on the test hook', preroll.nVoices >= 80, String(preroll.nVoices));
 
+// --- Same-named adjacent Hooks: match by time range, not the label "Hook" ---
+const hooks = await page.evaluate(() => {
+  const mq = window.__mq;
+  mq.update((s) => {
+    s.recipe.key = 'C';
+    s.recipe.mode = 'major';
+    s.recipe.bpm = 140;
+    s.sections = [
+      { id: 'h1', type: 'Hook', bars: 8, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Hook', transpose: 0 },
+      { id: 'h2', type: 'Hook', bars: 8, layers: { drums: true, bass: true, chords: true, melody: true, vocals: true }, beat: 'A', part: 'Hook', transpose: 2 },
+    ];
+  });
+  const hook2 = 8 * 4 * 60 / 140;
+  const inFirst = mq.takeSectionTranspose({ id: 'a', name: 'H1', createdAt: '', start: 1, duration: 2, sampleRate: 44100, active: true, section: 'Hook', polish: null }, mq.getSong());
+  const inSecond = mq.takeSectionTranspose({ id: 'b', name: 'H2', createdAt: '', start: hook2 + 0.1, duration: 2, sampleRate: 44100, active: true, section: 'Hook', polish: null }, mq.getSong());
+  const prerollSecond = mq.takeSectionTranspose({ id: 'c', name: 'H2 pre', createdAt: '', start: hook2 - 0.24, duration: 2, sampleRate: 44100, active: true, section: 'Hook', polish: null }, mq.getSong());
+  return { hook2, inFirst, inSecond, prerollSecond, tone0: mq.toneCutoffHz(0), toneDef: mq.toneCutoffHz(0.5), tone1: mq.toneCutoffHz(1) };
+});
+ok('Hook@0 then Hook@+2: a take inside the first Hook uses 0, not the later Hook', hooks.inFirst === 0, JSON.stringify(hooks));
+ok('Hook@0 then Hook@+2: a take inside the second Hook uses +2, not the shared name', hooks.inSecond === 2, JSON.stringify(hooks));
+ok('Hook@0 then Hook@+2: a take 0.24s before the second Hook (pre-roll) uses +2', hooks.prerollSecond === 2, JSON.stringify(hooks));
+ok('toneCutoffHz default is transparent on the test hook', hooks.toneDef >= 16000 && hooks.tone0 < 1000, JSON.stringify(hooks));
+
+// --- Default Tone is spectrally bright (not the old ~3.3 kHz dull default) ---
+const bright = await page.evaluate(async () => {
+  const mq = window.__mq;
+  const hfRatio = (buf, fc = 8000) => {
+    const x = buf.getChannelData(0);
+    const sr = buf.sampleRate;
+    const rc = 1 / (2 * Math.PI * fc);
+    const dt = 1 / sr;
+    const a = rc / (rc + dt);
+    let y = 0, prev = 0, hs = 0, ts = 0;
+    for (let i = 0; i < x.length; i++) {
+      y = a * (y + x[i] - prev);
+      prev = x[i];
+      hs += y * y;
+      ts += x[i] * x[i];
+    }
+    return ts > 0 ? hs / ts : 0;
+  };
+  const hatsOnly = () => {
+    mq.update((s) => {
+      s.takes = [];
+      s.recipe.bpm = 120;
+      s.recipe.palette = 'clean';
+      s.sections = [{ id: 'x', type: 'Hook', bars: 2, layers: { drums: true, bass: false, chords: false, melody: false, vocals: false }, beat: 'A', part: 'Hook', transpose: 0 }];
+      s.parts.Hook = [];
+      for (const r of ['kick', 'snare', 'hat', 'bass', 'clap', 'open', 'perc']) {
+        s.beats.A[r] = s.beats.A[r].map((_, i) => (r === 'hat' && i % 2 === 0 ? 1 : 0));
+      }
+      s.mix.drums.inst = 'tight';
+      s.mix.drums.drive = 0;
+      s.mix.drums.character = 0;
+    });
+  };
+  const renderAt = async (tone, inst = 'tight') => {
+    hatsOnly();
+    mq.update((s) => { s.mix.drums.tone = tone; s.mix.drums.inst = inst; });
+    const buf = await mq.renderSong(mq.getSong(), ['drums']);
+    const ch = buf.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < ch.length; i++) { const a = Math.abs(ch[i]); if (a > peak) peak = a; }
+    return { ratio: hfRatio(buf), peak };
+
+  };
+  const t0 = await renderAt(0);
+  const tDef = await renderAt(0.5);
+  const t1 = await renderAt(1);
+  const darkKit = await renderAt(0.5, 'trapdark');
+  const tightKit = tDef;
+  return { t0, tDef, t1, darkKit, tightKit };
+});
+ok('Default Tone (50) keeps hat brightness close to fully open, unlike Tone 0',
+  bright.tDef.peak > bright.t0.peak * 5 && Math.abs(bright.tDef.ratio - bright.t1.ratio) < 0.05,
+  JSON.stringify(bright));
+ok('Dark trap hats are not buried by the 4 kHz body filter (HF comparable to Tight)',
+  bright.darkKit.ratio > bright.tightKit.ratio * 0.5 && bright.darkKit.peak > 0.02,
+  JSON.stringify(bright));
+
 // --- Sound picker ---
+
 await page.click('[data-tab="song"]');
 await page.click('[data-testid="sound-open-chords"]');
 await page.waitForSelector('[data-testid="sound-picker"]');

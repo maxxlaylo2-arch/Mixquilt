@@ -1,6 +1,7 @@
 // Unit tests for key-aware spelling and key-change intervals.
 // Run: node tests/theory.test.mjs
 import { midiToName, pitchClassName, keySemitoneDelta, chordName, keyAfterTranspose } from '../src/theory.ts';
+import { toneCutoffHz } from '../src/audio/macros.ts';
 
 const results = [];
 const ok = (name, cond, extra = '') => {
@@ -26,5 +27,9 @@ ok('C → B is −1, not +11', keySemitoneDelta('C', 'B') === -1, String(keySemi
 ok('A♭ → E♭ is −5', keySemitoneDelta('A♭', 'E♭') === -5, String(keySemitoneDelta('A♭', 'E♭')));
 ok('C +2 snaps to D', keyAfterTranspose('C', 2) === 'D', keyAfterTranspose('C', 2));
 ok('A♭ +2 snaps to B♭', keyAfterTranspose('A♭', 2) === 'B♭', keyAfterTranspose('A♭', 2));
+ok('Tone 0 is dark (~700 Hz)', Math.abs(toneCutoffHz(0) - 700) < 1, String(toneCutoffHz(0)));
+ok('Tone default 0.5 is transparent (≥16 kHz)', toneCutoffHz(0.5) >= 16000 && toneCutoffHz() >= 16000, String(toneCutoffHz(0.5)));
+ok('Tone 1 stays fully open', toneCutoffHz(1) >= 16000, String(toneCutoffHz(1)));
+ok('Old curve mid-point (~3.3 kHz) is no longer the default', toneCutoffHz(0.5) > 8000, String(toneCutoffHz(0.5)));
 
 console.log(`\n${results.filter((r) => r.startsWith('PASS')).length}/${results.length} passed`);

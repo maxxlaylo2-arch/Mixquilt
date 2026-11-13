@@ -21,6 +21,18 @@ function formant(out: Tone.InputNode, f1: number, f2: number, q = 3) {
   return { in: a as Tone.InputNode, nodes: [a, b] };
 }
 
+/** Start LFO-backed effects (Chorus, AutoFilter, Vibrato, Tremolo, LFO). */
+function startMod<T>(n: T): T {
+  const x = n as T & { start?: (time?: any) => unknown };
+  if (typeof x.start === 'function') x.start();
+  return n;
+}
+
+function stopAndDispose(n: { stop?: (time?: any) => unknown; dispose(): unknown }) {
+  try { n.stop?.(); } catch { /* already stopped */ }
+  n.dispose();
+}
+
 export function makePoly(kind: string, out: Tone.InputNode): Inst {
   let synth: Tone.PolySynth<any> | undefined;
   let extra: Tone.PolySynth<any> | undefined;
@@ -30,6 +42,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
 
   const finish = (s: Tone.PolySynth<any>, fx: Tone.ToneAudioNode[] = []) => {
     s.maxPolyphony = 24;
+    fx.forEach(startMod);
     s.chain(...fx, out as any);
     synth = s;
     chain.push(...fx);
@@ -75,7 +88,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
       nodes.push(...form.nodes);
       const s = add(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'custom', partials: [0.4, 1, 0.35, 0.2, 0.45, 0.08, 0.2] } as any, envelope: env(0.22, 0.5, 0.85, 1.8) }));
       s.maxPolyphony = 24;
-      s.chain(add(new Tone.Chorus({ frequency: 0.6, delayTime: 3.5, depth: 0.45, wet: 0.45 })), form.in as any);
+      s.chain(startMod(add(new Tone.Chorus({ frequency: 0.6, delayTime: 3.5, depth: 0.45, wet: 0.45 }))), form.in as any);
       s.volume.value = -14;
       synth = s;
       break;
@@ -167,7 +180,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
       nodes.push(...form.nodes);
       const s = add(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'custom', partials: [0.5, 1, 0.3, 0.25, 0.4] } as any, envelope: env(0.18, 0.4, 0.85, 1.6) }));
       s.maxPolyphony = 16;
-      s.chain(add(new Tone.Vibrato(0.7, 0.08)), form.in as any);
+      s.chain(startMod(add(new Tone.Vibrato(0.7, 0.08))), form.in as any);
       s.volume.value = -14;
       synth = s;
       break;
@@ -177,7 +190,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
       nodes.push(...form.nodes);
       const s = add(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'custom', partials: [0.2, 1, 0.25, 0.4, 0.15] } as any, envelope: env(0.04, 0.2, 0.7, 0.3) }));
       s.maxPolyphony = 12;
-      s.chain(add(new Tone.Vibrato(5.2, 0.06)), form.in as any);
+      s.chain(startMod(add(new Tone.Vibrato(5.2, 0.06))), form.in as any);
       s.volume.value = -10;
       synth = s;
       break;
@@ -202,7 +215,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
       nodes.push(...form.nodes);
       const s = add(new Tone.PolySynth(Tone.Synth, { oscillator: { type: 'custom', partials: [1, 0.7, 0.25, 0.15, 0.2] } as any, envelope: env(0.08, 0.3, 0.8, 0.5) }));
       s.maxPolyphony = 12;
-      s.chain(add(new Tone.Chorus({ frequency: 1.1, delayTime: 3, depth: 0.35, wet: 0.4 })), form.in as any);
+      s.chain(startMod(add(new Tone.Chorus({ frequency: 1.1, delayTime: 3, depth: 0.35, wet: 0.4 }))), form.in as any);
       s.volume.value = -13;
       synth = s;
       break;
@@ -229,7 +242,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
         attack: (m, time, vel) => s.triggerAttack(f(m), time, vel),
         release: (m, time) => s.triggerRelease(time),
         releaseAll: () => s.triggerRelease(),
-        dispose: () => { s.dispose(); nodes.forEach((n) => n.dispose()); },
+        dispose: () => { s.dispose(); nodes.forEach((n) => stopAndDispose(n as any)); },
       };
     }
     case 'shimmerlead': {
@@ -263,7 +276,7 @@ export function makePoly(kind: string, out: Tone.InputNode): Inst {
     attack: (m, time, vel) => { s0.triggerAttack(f(m), time, vel); s1?.triggerAttack(f(m) * 2, time, vel * 0.7); },
     release: (m, time) => { s0.triggerRelease(f(m), time); s1?.triggerRelease(f(m) * 2, time); },
     releaseAll: () => { s0.releaseAll(); s1?.releaseAll(); },
-    dispose: () => { s0.dispose(); s1?.dispose(); nodes.forEach((n) => n.dispose()); chain.forEach((c) => { try { c.dispose(); } catch { /* already */ } }); },
+    dispose: () => { s0.dispose(); s1?.dispose(); nodes.forEach((n) => stopAndDispose(n as any)); chain.forEach((c) => { try { stopAndDispose(c as any); } catch { /* already */ } }); },
   };
 }
 
@@ -274,13 +287,14 @@ export function makeBass(kind: string, out: Tone.InputNode): Inst {
   let disposeExtra = () => {};
 
   const mono = (s: Tone.Synth | Tone.MonoSynth | Tone.MembraneSynth | Tone.FMSynth, fx: Tone.ToneAudioNode[] = []) => {
+    fx.forEach(startMod);
     s.chain(...fx, out as any);
     let lastT = -1;
     trigger = (notes, dur, time, vel) => {
       const t = time <= lastT ? lastT + 0.001 : time; lastT = t;
       (s as any).triggerAttackRelease(f(notes[0]), dur, t, vel);
     };
-    disposeExtra = () => { s.dispose(); fx.forEach((x) => x.dispose()); };
+    disposeExtra = () => { s.dispose(); fx.forEach((x) => stopAndDispose(x as any)); };
   };
 
   switch (kind) {
@@ -401,10 +415,13 @@ export function makeKit(kind: string, out: Tone.InputNode): Kit {
   const snareB = add(new Tone.MembraneSynth({ pitchDecay: 0.02, octaves: 2, envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 } })); snareB.volume.value = spec.bodyVol; snareB.connect(bus);
   const clap = add(new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: 0.09, sustain: 0 } }));
   const clapF = add(new Tone.Filter({ frequency: spec.clapBp, type: 'bandpass', Q: 0.9 })); clap.chain(clapF, bus); clap.volume.value = spec.clapVol;
+  // Dark kits run a 4 kHz body filter; hats are high-passed at ~10 kHz so they
+  // must bypass that bus or they disappear. Other color buses still tint the hats.
+  const hatDest = spec.color === 'dark' ? (out as any) : bus;
   const hat = add(new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.001, decay: spec.hatDecay, sustain: 0 } }));
-  const hatF = add(new Tone.Filter(spec.hatHp, 'highpass')); hat.chain(hatF, bus); hat.volume.value = spec.hatVol;
+  const hatF = add(new Tone.Filter(spec.hatHp, 'highpass')); hat.chain(hatF, hatDest); hat.volume.value = spec.hatVol;
   const open = add(new Tone.NoiseSynth({ noise: { type: 'white' }, envelope: { attack: 0.002, decay: spec.openDecay, sustain: 0 } }));
-  const openF = add(new Tone.Filter(spec.openHp, 'highpass')); open.chain(openF, bus); open.volume.value = spec.openVol;
+  const openF = add(new Tone.Filter(spec.openHp, 'highpass')); open.chain(openF, hatDest); open.volume.value = spec.openVol;
 
   let perc: Tone.ToneAudioNode;
   let percHit: (t: number, vel: number) => void;
@@ -452,6 +469,6 @@ export function makeKit(kind: string, out: Tone.InputNode): Kit {
         case 'perc': percHit(safe(row, time), vel); break;
       }
     },
-    dispose() { nodes.forEach((n) => n.dispose()); },
+    dispose() { nodes.forEach((n) => stopAndDispose(n as any)); },
   };
 }

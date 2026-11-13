@@ -1,7 +1,7 @@
 // Turns the user's song data into timed note events. Pure functions: this only plays back
 // what the user placed (grid steps, chosen chords, recorded notes). It never invents notes.
 import type { Section, Song, StepVal } from '../model';
-import { DRUM_ROWS, STEPS, lyricKeys } from '../model';
+import { DRUM_ROWS, STEPS } from '../model';
 import { chordMidis, degreeToMidi, grooveById } from '../theory';
 
 export type Ev =
@@ -30,24 +30,13 @@ export const TAKE_PREROLL_SEC = 0.25;
 
 /** Transpose (semitones) of the section a vocal take sits in.
  *  Takes recorded with “Start at <section>” can be saved up to TAKE_PREROLL_SEC
- *  before the section, so we ignore that pre-roll and prefer the saved section label. */
+ *  before the section, so we look up by time after ignoring that pre-roll.
+ *  Matching is by section time range (index), never by repeated names like Hook/Hook. */
 export function takeSectionTranspose(t: { start: number; section?: string }, s: Song): number {
-  const keys = lyricKeys(s.sections);
   const beat = Math.max(0, t.start + TAKE_PREROLL_SEC) / secPerBeat(s);
   const at = sectionAtBeat(s, beat);
-  if (t.section) {
-    if (at && (keys[at.index] === t.section || at.section.type === t.section)) return at.section.transpose || 0;
-    // Prefer the matching section at or after the pre-roll-adjusted time (not an earlier same-named hook).
-    const from = at ? at.index : 0;
-    for (let i = from; i < s.sections.length; i++) {
-      if (keys[i] === t.section || s.sections[i].type === t.section) return s.sections[i].transpose || 0;
-    }
-    const i = keys.indexOf(t.section);
-    if (i >= 0) return s.sections[i].transpose || 0;
-    const byType = s.sections.find((sec) => sec.type === t.section);
-    if (byType) return byType.transpose || 0;
-  }
   if (at) return at.section.transpose || 0;
+  if (s.sections.length) return s.sections[s.sections.length - 1].transpose || 0;
   return 0;
 }
 
