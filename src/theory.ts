@@ -124,9 +124,77 @@ export const MOODS: MoodDef[] = [
 export const moodById = (id: string) => MOODS.find((m) => m.id === id);
 
 // ---------- pitch helpers ----------
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-export const midiToName = (m: number) => KEYS[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
-export const keyIndex = (k: string) => Math.max(0, KEYS.indexOf(k));
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+const LETTER_PC = [0, 2, 4, 5, 7, 9, 11];
+const SHARP_NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const FLAT_NAMES = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B'];
+
+export function parseKeyName(k: string): { letter: string; acc: number; pc: number } {
+  const letter = (k[0] || 'C').toUpperCase();
+  const rest = k.slice(1);
+  const acc = /[♯#]/.test(rest) ? rest.length || 1 : /[♭b]/.test(rest) ? -(rest.length || 1) : 0;
+  const li = LETTERS.indexOf(letter as typeof LETTERS[number]);
+  const letterPc = li >= 0 ? LETTER_PC[li] : 0;
+  return { letter: li >= 0 ? letter : 'C', acc, pc: ((letterPc + acc) % 12 + 12) % 12 };
+}
+
+/** Flat-key signatures (F and any flat tonic) prefer flats; sharp tonics and G/D/A/E/B/C prefer sharps. */
+export function prefersFlats(keyName: string): boolean {
+  const { letter, acc } = parseKeyName(keyName);
+  if (acc < 0) return true;
+  if (acc > 0) return false;
+  return letter === 'F';
+}
+
+function accidentalChar(n: number): string {
+  if (n === 0) return '';
+  if (n > 0) return '♯'.repeat(n);
+  return '♭'.repeat(-n);
+}
+
+/** Spell a pitch class using the key (and mode, when given) so Ab Dorian gets Gb / Cb, not F♯ / B. */
+export function pitchClassName(pc: number, keyName?: string, modeId?: string): string {
+  const p = ((pc % 12) + 12) % 12;
+  if (keyName && modeId) {
+    const tonic = parseKeyName(keyName);
+    const steps = modeById(modeId).steps;
+    const li0 = LETTERS.indexOf(tonic.letter as typeof LETTERS[number]);
+    for (let d = 0; d < 7; d++) {
+      if ((tonic.pc + steps[d]) % 12 === p) {
+        const li = (li0 + d) % 7;
+        const acc = ((p - LETTER_PC[li] + 12) % 12);
+        const accSigned = acc > 6 ? acc - 12 : acc;
+        return LETTERS[li] + accidentalChar(accSigned);
+      }
+    }
+  }
+  if (keyName) return prefersFlats(keyName) ? FLAT_NAMES[p] : SHARP_NAMES[p];
+  return KEYS[p];
+}
+
+export const midiToName = (m: number, keyName?: string, modeId?: string) => {
+  const pc = ((m % 12) + 12) % 12;
+  const name = pitchClassName(pc, keyName, modeId);
+  const letter = name[0];
+  const li = LETTERS.indexOf(letter as typeof LETTERS[number]);
+  const letterPc = li >= 0 ? LETTER_PC[li] : pc;
+  const acc = (name.match(/♯/g)?.length ?? 0) - (name.match(/♭/g)?.length ?? 0);
+  const oct = Math.round((m - letterPc - acc) / 12) - 1;
+  return name + oct;
+};
+export const keyIndex = (k: string) => {
+  const i = KEYS.indexOf(k);
+  if (i >= 0) return i;
+  return parseKeyName(k).pc;
+};
+
+/** Shortest signed interval from one tonic to another, in semitones (−6..+6). A tritone up from C is +6, so the return trip is −6 and notes stay in the same octave. */
+export function keySemitoneDelta(fromKey: string, toKey: string): number {
+  let d = keyIndex(toKey) - keyIndex(fromKey);
+  while (d > 6) d -= 12;
+  while (d < -6) d += 12;
+  return d;
+}
 
 /** MIDI note of scale degree `deg` (can be negative or > 6) for the key/mode, around `baseOct` (C4 = 60 means octave 4). */
 export function degreeToMidi(keyName: string, modeId: string, deg: number, baseMidi = 60): number {
@@ -185,7 +253,7 @@ export function chordLabel(modeId: string, c: Chord): string {
 export function chordName(keyName: string, modeId: string, c: Chord): string {
   const root = degreeToMidi(keyName, modeId, c.deg, 48);
   const q = resolveQuality(modeId, c);
-  const name = KEYS[((root % 12) + 12) % 12];
+  const name = pitchClassName(((root % 12) + 12) % 12, keyName, modeId);
   const suf: Record<string, string> = { maj: '', min: 'm', dim: 'dim', aug: 'aug', sus2: 'sus2', sus4: 'sus4' };
   return name + (suf[q] ?? '') + (c.seventh ? '7' : '');
 }

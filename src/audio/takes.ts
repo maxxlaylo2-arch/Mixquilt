@@ -1,4 +1,5 @@
 import type { Song, Take } from '../model';
+import { takeSectionTranspose } from './compose';
 import { db } from '../db';
 import { nativeContext } from './engine';
 import { applyVoicePolish, forgetPolish } from './voicePolish';
@@ -22,10 +23,14 @@ export async function rawTakeBuffer(t: Take): Promise<AudioBuffer | null> {
 export async function loadTakeBuffer(t: Take, s: Song): Promise<AudioBuffer | null> {
   const raw = await rawTakeBuffer(t);
   if (!raw) return null;
-  return applyVoicePolish(raw, t.polish, { key: s.recipe.key, mode: s.recipe.mode, bpm: s.recipe.bpm, sampleRate: raw.sampleRate, takeStart: t.start, takeId: t.id });
+  return applyVoicePolish(raw, t.polish, { ...polishContext(t, s), sampleRate: raw.sampleRate });
 }
 
-export const polishContext = (t: Take, s: Song) => ({ key: s.recipe.key, mode: s.recipe.mode, bpm: s.recipe.bpm, sampleRate: t.sampleRate, takeStart: t.start, takeId: t.id });
+export const polishContext = (t: Take, s: Song) => ({
+  key: s.recipe.key, mode: s.recipe.mode, bpm: s.recipe.bpm,
+  sampleRate: t.sampleRate, takeStart: t.start, takeId: t.id,
+  transpose: takeSectionTranspose(t, s),
+});
 
 let previewSrc: AudioBufferSourceNode | null = null;
 export async function previewTake(t: Take, s: Song) {

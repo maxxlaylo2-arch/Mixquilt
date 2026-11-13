@@ -8,7 +8,7 @@ import { keyIndex, modeById } from '../theory';
 import type { PolishParams, PolishReport, Space } from './polishDsp';
 import { runPolish } from './polishClient';
 
-export interface PolishContext { key: string; mode: string; bpm: number; sampleRate: number; takeStart: number; takeId: string }
+export interface PolishContext { key: string; mode: string; bpm: number; sampleRate: number; takeStart: number; takeId: string; transpose?: number }
 export interface VoicePolishSettings extends PolishParams { preset: PresetId | 'custom'; bypass: boolean }
 export type PresetId = 'natural' | 'polished' | 'tuned';
 
@@ -32,9 +32,9 @@ const lastKeyByTake = new Map<string, string>();
 
 function cacheKey(s: VoicePolishSettings, c: PolishContext) {
   const { bypass, preset, ...p } = s;
-  return `polish:${c.takeId}:${JSON.stringify(p)}:${c.key}:${c.mode}:${c.bpm}:${c.takeStart.toFixed(3)}`;
+  return `polish:${c.takeId}:${JSON.stringify(p)}:${c.key}:${c.mode}:${c.bpm}:${c.transpose ?? 0}:${c.takeStart.toFixed(3)}`;
 }
-export const scalePitchClasses = (key: string, mode: string) => modeById(mode).steps.map((st) => (st + keyIndex(key)) % 12);
+export const scalePitchClasses = (key: string, mode: string, transpose = 0) => modeById(mode).steps.map((st) => (st + keyIndex(key) + transpose % 12 + 120) % 12);
 
 /** Returns the polished buffer (processing in a Worker on first use). */
 export async function polishedBuffer(raw: AudioBuffer, settings: VoicePolishSettings, c: PolishContext, progress?: (f: number, stage: string) => void) {
@@ -46,7 +46,7 @@ export async function polishedBuffer(raw: AudioBuffer, settings: VoicePolishSett
     let data: Float32Array, report: PolishReport;
     if (stored) ({ data, report } = stored);
     else {
-      const res = await runPolish({ data: raw.getChannelData(0), sr: raw.sampleRate, scale: scalePitchClasses(c.key, c.mode), bpm: c.bpm, takeStart: c.takeStart, params: settings }, progress);
+      const res = await runPolish({ data: raw.getChannelData(0), sr: raw.sampleRate, scale: scalePitchClasses(c.key, c.mode, c.transpose ?? 0), bpm: c.bpm, takeStart: c.takeStart, params: settings }, progress);
       data = res.data; report = res.report;
       await db.put('audio', { data, report }, key).catch(() => {});
     }

@@ -3,7 +3,7 @@ import { update, useSong } from '../store';
 import type { Recipe, RecipeField } from '../model';
 import { GENRES, GROOVES, KEYS, MODES, MOODS, PALETTES, PROGRESSIONS, STRUCTURES, TWISTS, chordName, modeById } from '../theory';
 import { suggest, type Wildness } from '../suggest';
-import { applyRecipe, describe, FIELD_LABEL } from '../actions';
+import { applyRecipe, applyTempo, describe, FIELD_LABEL } from '../actions';
 import { Card, NextStep, Seg, Select, Stepper } from './common';
 import { IconDice, IconLock, IconUnlock } from './icons';
 import { setUi, toast } from './ui';
@@ -114,16 +114,16 @@ export function RecipeTab() {
           </Ingredient>
           <Ingredient field="bpm">
             <div class="row">
-              <Stepper label="tempo" value={r.bpm} min={50} max={190} onChange={(v) => update((x) => { x.recipe.bpm = v; }, ['recipe', 'Adjusted tempo'])} suffix=" BPM" />
+              <Stepper label="tempo" value={r.bpm} min={50} max={190} onChange={(v) => applyTempo(v)} suffix=" BPM" />
               <button class="btn ghost" onClick={() => {
                 const now = performance.now();
                 const t = [...taps.filter((x) => now - x < 2500), now].slice(-6);
                 setTaps(t);
-                if (t.length >= 3) { const avg = (t[t.length - 1] - t[0]) / (t.length - 1); const bpm = Math.round(Math.min(190, Math.max(50, 60000 / avg))); update((x) => { x.recipe.bpm = bpm; }, ['recipe', 'Set tempo by tapping']); }
+                if (t.length >= 3) { const avg = (t[t.length - 1] - t[0]) / (t.length - 1); const bpm = Math.round(Math.min(190, Math.max(50, 60000 / avg))); applyTempo(bpm, 'Set tempo by tapping'); }
               }}>Tap tempo</button>
             </div>
             <input type="range" class="range" min={50} max={190} value={r.bpm} aria-label="Tempo slider"
-              onInput={(e) => update((x) => { x.recipe.bpm = Number((e.target as HTMLInputElement).value); }, ['recipe', 'Adjusted tempo'])} />
+              onInput={(e) => applyTempo(Number((e.target as HTMLInputElement).value))} />
           </Ingredient>
           <Ingredient field="groove" hint={GROOVES.find((g) => g.id === r.groove)?.feel + '. Groove only changes the swing feel.'}>
             <Select label="Groove" value={r.groove} options={GROOVES.map((g) => [g.id, g.label])} onChange={(v) => set({ groove: v })} />

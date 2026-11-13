@@ -1,7 +1,7 @@
 // Turns the user's song data into timed note events. Pure functions: this only plays back
 // what the user placed (grid steps, chosen chords, recorded notes). It never invents notes.
 import type { Section, Song, StepVal } from '../model';
-import { DRUM_ROWS, STEPS } from '../model';
+import { DRUM_ROWS, STEPS, lyricKeys } from '../model';
 import { chordMidis, degreeToMidi, grooveById } from '../theory';
 
 export type Ev =
@@ -23,6 +23,21 @@ export function sectionAtBeat(s: Song, beat: number): { section: Section; index:
     b += len;
   }
   return null;
+}
+
+/** Transpose (semitones) of the section a vocal take sits in, from its start time or section label. */
+export function takeSectionTranspose(t: { start: number; section?: string }, s: Song): number {
+  const beat = Math.max(0, t.start) / secPerBeat(s);
+  const at = sectionAtBeat(s, beat);
+  if (at) return at.section.transpose || 0;
+  if (t.section) {
+    const keys = lyricKeys(s.sections);
+    const i = keys.indexOf(t.section);
+    if (i >= 0) return s.sections[i].transpose || 0;
+    const byType = s.sections.find((sec) => sec.type === t.section);
+    if (byType) return byType.transpose || 0;
+  }
+  return 0;
 }
 
 function loopSection(m: Extract<PlayMode, { kind: 'loop' }>): Section {

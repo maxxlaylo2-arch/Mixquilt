@@ -9,6 +9,7 @@
     "build:dict": "node scripts/build-dict.mjs",
     "smoke": "node tests/smoke.mjs",
     "test:polish": "node tests/polish-dsp.test.mjs",
+    "test:theory": "node tests/theory.test.mjs",
     "build:native": "BASE_PATH=./ npm run build",
     "notices": "node scripts/gen-notices.mjs"
   },

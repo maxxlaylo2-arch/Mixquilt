@@ -58,6 +58,7 @@ function ChordTrack() {
 }
 
 function NoteRoll(p: { notes: Note[]; bars: number }) {
+  const { key, mode } = useSong().recipe;
   useEmitter(onEngine);
   const [pos, setPos] = useState(-1);
   const playing = isPlaying();
@@ -72,7 +73,7 @@ function NoteRoll(p: { notes: Note[]; bars: number }) {
     <div class="roll" aria-label={`${p.notes.length} notes recorded`} data-testid="note-roll">
       {Array.from({ length: p.bars }, (_, i) => <span key={i} class="roll-bar" style={{ left: `${(i * 4 / len) * 100}%` }}>{i + 1}</span>)}
       {p.notes.map((n, i) => (
-        <span key={i} class="roll-note" title={midiToName(n.m)}
+        <span key={i} class="roll-note" title={midiToName(n.m, key, mode)}
           style={{ left: `${(n.t / len) * 100}%`, width: `${Math.max(0.6, (n.d / len) * 100)}%`, bottom: `${((n.m - lo) / span) * 100}%`, height: `${100 / span}%` }} />
       ))}
       {pos >= 0 && <span class="roll-head" style={{ left: `${(pos / len) * 100}%` }} />}
@@ -183,6 +184,7 @@ export function PlayTab() {
         right={<button class={'btn rec' + (rec ? ' on' : '')} aria-pressed={rec} data-testid="rec-melody" onClick={toggleRec}><IconRecord size={18} />{rec ? 'Recording' : 'Record'}</button>}>
         <div class="row wrap">
           <Select label="Melody part" value={part} options={[...parts.map((p) => [p, `Part: ${p}`] as [string, string]), ...SECTION_TYPES.filter((t) => !parts.includes(t)).map((t) => [t, `New part: ${t}`] as [string, string])]} onChange={(v) => setUi({ part: v })} />
+          <Seg label="Pattern" value={u.beat} onChange={(v) => setUi({ beat: v })} options={[['A', 'Beat A'], ['B', 'Beat B']]} />
           <Seg label="Octave" value={oct} onChange={setOct} options={[[-1, 'Low'], [0, 'Mid'], [1, 'High']]} />
           <Seg label="Scale" value={penta ? 1 : 0} onChange={(v) => setPenta(v === 1)} options={[[0, 'Full scale'], [1, 'Pentatonic']]} />
         </div>
@@ -192,10 +194,10 @@ export function PlayTab() {
               {row.map((m, i) => {
                 const id = `pad${r}-${i}`;
                 return (
-                  <button key={id} class={'pad-key' + (m % 12 === rootPc ? ' root' : '')} aria-label={`Play ${midiToName(m)}`}
+                  <button key={id} class={'pad-key' + (m % 12 === rootPc ? ' root' : '')} aria-label={`Play ${midiToName(m, key, mode)}`}
                     onPointerDown={(e) => { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); down(id, m); }}
                     onPointerUp={() => up(id)} onPointerCancel={() => up(id)} onLostPointerCapture={() => up(id)}>
-                    {!penta && <span class="deg">{(i % 7) + 1}</span>}<span class="nn">{midiToName(m)}</span>
+                    {!penta && <span class="deg">{(i % 7) + 1}</span>}<span class="nn">{midiToName(m, key, mode)}</span>
                   </button>
                 );
               })}

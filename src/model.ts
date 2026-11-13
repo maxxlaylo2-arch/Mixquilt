@@ -121,6 +121,21 @@ export function lyricKeys(sections: Section[]): string[] {
   return sections.map((s) => (s.type === 'Verse' ? `Verse ${++v}` : s.type));
 }
 
+/** Shift every recorded melody note by `semitones`, clamped to the MIDI range. */
+export function transposeMelodyParts(parts: Record<string, Note[]>, semitones: number) {
+  if (!semitones) return;
+  for (const notes of Object.values(parts)) {
+    for (const n of notes) n.m = Math.max(0, Math.min(127, n.m + semitones));
+  }
+}
+
+/** Keep vocal takes locked to the same beat when tempo changes. `Take.start` is in seconds. */
+export function rescaleTakeStarts(takes: Take[], fromBpm: number, toBpm: number) {
+  if (!fromBpm || !toBpm || fromBpm === toBpm) return;
+  const scale = fromBpm / toBpm;
+  for (const t of takes) t.start *= scale;
+}
+
 export function newSong(title = 'Untitled song'): Song {
   const now = new Date().toISOString();
   const recipe: Recipe = {

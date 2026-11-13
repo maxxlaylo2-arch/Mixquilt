@@ -1,8 +1,8 @@
 import type { Recipe, RecipeField, Song } from './model';
-import { lyricKeys, sectionsFromStructure } from './model';
+import { lyricKeys, rescaleTakeStarts, sectionsFromStructure, transposeMelodyParts } from './model';
 import { update } from './store';
 import { remember } from './suggest';
-import { GROOVES, KEYS, MODES, PALETTES, PROGRESSIONS, STRUCTURES, TWISTS, modeById } from './theory';
+import { GROOVES, KEYS, MODES, PALETTES, PROGRESSIONS, STRUCTURES, TWISTS, keySemitoneDelta, modeById } from './theory';
 
 export function syncLyrics(s: Song) {
   for (const k of Array.from(new Set(lyricKeys(s.sections)))) if (!s.lyrics.find((l) => l.key === k)) s.lyrics.push({ key: k, text: '' });
@@ -27,9 +27,21 @@ export const FIELD_LABEL: Record<RecipeField, string> = {
   structure: 'Song structure', palette: 'Sound palette', twist: 'Twist idea',
 };
 
+/** Apply a tempo change and rescale vocal take start times so they stay on the same beat. */
+export function applyTempo(bpm: number, logText = 'Adjusted tempo') {
+  update((s) => {
+    const next = Math.min(190, Math.max(50, Math.round(bpm)));
+    if (next === s.recipe.bpm) return;
+    rescaleTakeStarts(s.takes, s.recipe.bpm, next);
+    s.recipe.bpm = next;
+  }, ['recipe', logText]);
+}
+
 /** Apply recipe choices. `how` records whether the user picked it or accepted a suggestion. */
 export function applyRecipe(p: Partial<Recipe>, how: 'chose' | 'accepted suggestion') {
   update((s) => {
+    const prevKey = s.recipe.key;
+    const prevBpm = s.recipe.bpm;
     for (const [k, v] of Object.entries(p) as [RecipeField, any][]) {
       (s.recipe as any)[k] = v;
       remember(k, v);
@@ -43,6 +55,8 @@ export function applyRecipe(p: Partial<Recipe>, how: 'chose' | 'accepted suggest
       if (k === 'structure') { s.sections = sectionsFromStructure(v); syncLyrics(s); }
       if (k === 'palette') { s.mix.drums.inst = undefined; s.mix.bass.inst = undefined; s.mix.chords.inst = undefined; s.mix.melody.inst = undefined; }
     }
+    if (p.key && p.key !== prevKey) transposeMelodyParts(s.parts, keySemitoneDelta(prevKey, p.key));
+    if (p.bpm != null && p.bpm !== prevBpm) rescaleTakeStarts(s.takes, prevBpm, s.recipe.bpm);
   });
 }
 export const allKeys = KEYS;

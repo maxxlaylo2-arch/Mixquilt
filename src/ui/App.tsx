@@ -25,7 +25,7 @@ export function contextMode(tab: Tab): PlayMode {
   const s = getSong();
   const u = ui;
   if (tab === 'beat') return { kind: 'loop', beat: u.beat, part: u.part, bars: Math.max(1, s.chords.length), layers: { melody: false } };
-  if (tab === 'play') return { kind: 'loop', beat: 'A', part: u.part, bars: s.partBars };
+  if (tab === 'play') return { kind: 'loop', beat: u.beat, part: u.part, bars: s.partBars };
   return { kind: 'song' };
 }
 
@@ -43,7 +43,7 @@ export function Transport() {
     return () => cancelAnimationFrame(raf);
   }, [playing]);
   const m = contextMode(u.tab);
-  const label = m.kind === 'song' ? 'Whole song' : u.tab === 'beat' ? `Loop: Beat ${u.beat}` : `Loop: ${u.part} melody`;
+  const label = m.kind === 'song' ? 'Whole song' : u.tab === 'beat' ? `Loop: Beat ${u.beat}` : `Loop: ${u.part} melody · Beat ${u.beat}`;
   const at = m.kind === 'song' ? sectionAtBeat(s, pos) : null;
   const keys = lyricKeys(s.sections);
   const where = playing ? (m.kind === 'song' ? (at ? `${keys[at.index]} · bar ${Math.floor((pos - at.start) / 4) + 1}` : 'End') : `Bar ${Math.floor((pos % (m.bars * 4)) / 4) + 1} of ${m.bars}`) : label;
@@ -104,7 +104,9 @@ export function App() {
       <header class="topbar">
         <div class="brand" aria-label="Mixquilt"><span class="logo" aria-hidden="true"><i /><i /><i /><i /></span><span class="brand-name">Mixquilt</span></div>
         <input class="title-input" aria-label="Song title" value={s.title}
-          onChange={(e) => { const v = (e.target as HTMLInputElement).value.trim() || 'Untitled song'; update((x) => { x.title = v; }, ['title', `Renamed song to "${v}"`]); }} />
+          onInput={(e) => { const v = (e.target as HTMLInputElement).value; update((x) => { x.title = v; }); }}
+          onChange={(e) => { const v = (e.target as HTMLInputElement).value.trim() || 'Untitled song'; update((x) => { x.title = v; }, ['title', `Renamed song to "${v}"`]); }}
+          onBlur={(e) => { const v = (e.target as HTMLInputElement).value.trim() || 'Untitled song'; if (v !== s.title) update((x) => { x.title = v; }, ['title', `Renamed song to "${v}"`]); }} />
         <button class="icon-btn" aria-label="My songs" data-testid="songs" onClick={() => setUi({ songsOpen: true })}><IconMenu /></button>
       </header>
       <main class="content" id="main">
@@ -119,7 +121,7 @@ export function App() {
       <nav class="tabbar" aria-label="Sections">
         {TABS.map(({ id, label, Icon }) => (
           <button key={id} class={'tab' + (u.tab === id ? ' active' : '')} aria-current={u.tab === id ? 'page' : undefined} data-tab={id}
-            onClick={async () => { if (isPlaying() && u.tab !== id) await stop(); setUi({ tab: id }); window.scrollTo(0, 0); }}>
+            onClick={async () => { if (isPlaying() && u.tab !== id) await stop(); setUi({ tab: id }); document.getElementById('main')?.scrollTo(0, 0); window.scrollTo(0, 0); }}>
             <Icon size={22} /><span>{label}</span>
           </button>
         ))}
