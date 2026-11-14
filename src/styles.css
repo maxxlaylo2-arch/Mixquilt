@@ -84,8 +84,14 @@ h3 { font-size: .9rem; margin: 12px 0 6px; color: var(--muted); text-transform: 
 .ingredient { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
 .ingredient.locked { border-color: var(--accent); }
 .ingredient p { margin: 0; }
+.ing-body { border: 0; margin: 0; padding: 0; min-width: 0; }
+.ing-body:disabled, .ing-body[disabled] { opacity: .55; pointer-events: none; }
 .ing-head { display: flex; justify-content: space-between; align-items: center; }
 .ing-label { font-weight: 700; }
+.groove-meter { display: flex; flex-direction: column; gap: 6px; padding: 10px; border-radius: 12px; background: var(--bg2); border: 1px solid var(--line); }
+.groove-track { position: relative; height: 10px; border-radius: 999px; background: var(--card2); box-shadow: inset 0 0 0 1px var(--line); }
+.groove-mark { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--muted); transform: translateX(-50%); }
+.groove-knob { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; background: var(--text); border: 2px solid var(--accent); transform: translate(-50%, -50%); }
 .lock { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line); background: transparent; color: var(--muted); font-size: .85rem; }
 .lock.on { color: #1b1200; background: var(--accent); border-color: transparent; }
 .ingredient .select { width: 100%; }

@@ -16,11 +16,18 @@ Live app: https://maxxlaylo2-arch.github.io/Mixquilt/
 
 ## Run
     npm install
-    npm run dev          # dev server
-    npm run build        # type-check + production build into dist/
+    npm run dev          # dev server (includes window.__mq test hooks)
+    npm run build        # type-check + production build into dist/ (no __mq, no sourcemaps)
+    npm run build:test   # production-like build with VITE_TEST_HOOKS=true for Playwright
     npm run build:native # build with relative paths (BASE_PATH=./) for Capacitor
     npm run preview      # serve dist/ on http://localhost:4173/Mixquilt/
-    npm run smoke        # Playwright smoke test against the preview server (uses /usr/bin/google-chrome)
+    npm run test:unit    # theory / polish / preroll / master (no browser)
+    npm run smoke        # Playwright smoke (Chrome or MQ_CHROME / Playwright Chromium)
+    npm run regressions  # Playwright regressions (needs build:test + preview)
+
+## Backup
+- **Full backup (.zip)** — song + vocal audio (and polish caches). Prefer this when moving devices.
+- **JSON only** — arrangement/lyrics/mix without takes. Importing JSON creates a new song with empty vocals.
 
 ## Layout
 - `src/theory.ts` rule tables (keys, modes, progressions, grooves, structures, moods, palettes)
@@ -32,13 +39,15 @@ Live app: https://maxxlaylo2-arch.github.io/Mixquilt/
 - `src/pdf.ts` lyric sheet + authorship log PDFs
 - `src/ui/` Preact screens (Recipe, Beat, Play, Lyrics, Mic, Song)
 
-## Wrapping as a mobile app later (Capacitor)
-The build uses relative paths (`base: './'`) and no router, and `capacitor.config.json` already points at `dist/`:
+## Wrapping as a mobile app (Capacitor)
+`@capacitor/core` / `@capacitor/cli` are in package.json. `capacitor.config.json` points at `dist/`.
 
-    npm i @capacitor/core @capacitor/cli @capacitor/ios @capacitor/android
-    npm run build && npx cap add ios && npx cap add android && npx cap sync
+    npm run build:native          # BASE_PATH=./ production web build
+    npx cap add ios               # once
+    npx cap add android           # once
+    npm run cap:sync              # build:native + cap sync
 
-Add microphone usage strings (iOS `NSMicrophoneUsageDescription`, Android `RECORD_AUDIO`).
+Then open Xcode / Android Studio. Add microphone usage strings (iOS `NSMicrophoneUsageDescription`, Android `RECORD_AUDIO`) before shipping store builds.
 
 ## Licenses
 CMU Pronouncing Dictionary (BSD-2-Clause) and SCOWL word lists notices are in `public/licenses/`,

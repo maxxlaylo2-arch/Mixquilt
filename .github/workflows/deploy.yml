@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -26,7 +26,46 @@ jobs:
       - run: npm ci
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-      - run: npm run build
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Build with test hooks + preview
+        run: |
+          VITE_TEST_HOOKS=true npm run build
+          npm run preview &
+          for i in $(seq 1 45); do
+            curl -sf "http://127.0.0.1:4173/${{ github.event.repository.name }}/" && exit 0
+            sleep 1
+          done
+          exit 1
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - name: Smoke + regressions
+        run: |
+          export MQ_URL="http://127.0.0.1:4173/${{ github.event.repository.name }}/"
+          export MQ_CHROME="$(node -e "console.log(require('playwright').chromium.executablePath())")"
+          mkdir -p screenshots exports
+          npm run smoke
+          npm run regressions
+        env:
+          MQ_SHOTS: ${{ github.workspace }}/screenshots
+          MQ_EXPORTS: ${{ github.workspace }}/exports
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Production build (no test hooks, no sourcemaps)
+        run: npm run build
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/configure-pages@v6

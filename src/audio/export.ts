@@ -65,9 +65,10 @@ export function hasContent(s: Song, id: TrackId): boolean {
   return (['A', 'B'] as const).some((b) => rows.some((r) => (s.beats[b] as any)[r].some((x: number) => x)));
 }
 
-export async function exportStemsZip(s: Song, onProgress?: (msg: string) => void): Promise<Blob> {
+export async function exportStemsZip(s: Song, onProgress?: (msg: string) => void, signal?: AbortSignal): Promise<Blob> {
   const files: Record<string, Uint8Array> = {};
   for (const t of TRACKS) {
+    if (signal?.aborted) throw new DOMException('Export cancelled', 'AbortError');
     if (!hasContent(s, t.id)) continue;
     onProgress?.(`Rendering ${t.label}…`);
     const b = await renderSong(s, [t.id]);

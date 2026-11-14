@@ -9,8 +9,9 @@ const errors = [];
 const results = [];
 const ok = (name, cond, extra = '') => { const l = `${cond ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`; results.push(l); console.log(l); if (!cond) process.exitCode = 1; };
 
+const chromePath = process.env.MQ_CHROME || (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
 const browser = await chromium.launch({
-  executablePath: '/usr/bin/google-chrome',
+  ...(chromePath ? { executablePath: chromePath } : {}),
   args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
 });
 
@@ -38,6 +39,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const { ctx, page } = await newPage({ width: 390, height: 844 }, true);
   await page.goto(URL);
   await page.waitForSelector('.hero h1');
+  await page.waitForFunction(() => window.__mq);
+  fs.mkdirSync(SHOTS, { recursive: true });
+  fs.mkdirSync(EXPORTS, { recursive: true });
   await page.screenshot({ path: `${SHOTS}/mobile-1-recipe.png`, fullPage: false });
   await page.fill('.title-input', 'Smoke Test Song'); await page.press('.title-input', 'Enter'); await page.click('.hero');
   await page.click('.mood:has-text("Hype")');

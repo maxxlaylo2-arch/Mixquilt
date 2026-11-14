@@ -42,7 +42,7 @@ function ChordTrack() {
           </div>
           <div class="row wrap">
             <Seg label="Chord color" value={(c.q ?? 'auto') as ChordQ} onChange={(q) => edit(sel, { ...c, q })}
-              options={[['auto', 'In key'], ['maj', 'Major'], ['min', 'Minor'], ['sus2', 'Sus2'], ['sus4', 'Sus4']]} />
+              options={[['auto', 'In key'], ['maj', 'Major'], ['min', 'Minor'], ['dim', 'Dim'], ['sus2', 'Sus2'], ['sus4', 'Sus4']]} />
             <button class={'chip' + (c.seventh ? ' on' : '')} aria-pressed={!!c.seventh} onClick={() => edit(sel, { ...c, seventh: !c.seventh })}>+7th</button>
             {s.chords.length > 1 && <button class="btn ghost" onClick={() => { update((x) => { x.chords.splice(sel, 1); x.recipe.progression = 'custom'; }, ['chords', 'Removed a chord bar']); setSel(null); }}>Remove bar</button>}
           </div>

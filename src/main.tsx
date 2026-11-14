@@ -1,4 +1,3 @@
-import { FINISHES, finishOf, softClip } from './audio/master';
 import { render } from 'preact';
 import { App } from './ui/App';
 import { initStore } from './store';
@@ -14,24 +13,40 @@ import { registerSW } from 'virtual:pwa-register';
   }
 }
 
-initStore().then(() => render(<App />, document.getElementById('root')!));
-if ('serviceWorker' in navigator && !import.meta.env.DEV) registerSW({ immediate: true });
+// Test hook for automated smoke/regression tests.
+// - Local `vite` (DEV): always on
+// - CI preview builds: set VITE_TEST_HOOKS=true
+// - Normal production Pages builds: omitted (keeps proprietary internals off window)
+const enableTestHooks = import.meta.env.DEV || import.meta.env.VITE_TEST_HOOKS === 'true';
 
-// Test hook used by the automated smoke tests (read-only helpers + render).
-import { getSong, update } from './store';
-import { renderSong } from './audio/export';
-import { runPolish } from './audio/polishClient';
-import { trackPitch } from './audio/polishDsp';
-import { applyRecipe, applyTempo } from './actions';
-import { polishContext } from './audio/takes';
-import { contextMode } from './ui/App';
-import { midiToName } from './theory';
-import { setUi, ui } from './ui/ui';
-import { takeSectionTranspose, TAKE_PREROLL_SEC } from './audio/compose';
-import { VOICES, voiceById } from './audio/library';
-import { keyAfterTranspose } from './theory';
-import { toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS } from './audio/macros';
-import { trimTakeToSection, trimTakeToSectionFloor, takeLookupTime, TAKE_SECTION_SLOP_SEC } from './audio/takeTiming';
-import { migrate as migrateSong } from './store';
-(window as any).__mq = { FINISHES, finishOf, softClip, getSong, update, renderSong, runPolish, trackPitch, applyRecipe, applyTempo, polishContext, contextMode, midiToName, setUi, ui, takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, keyAfterTranspose, toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS,
-  trimTakeToSection, trimTakeToSectionFloor, takeLookupTime, TAKE_SECTION_SLOP_SEC, migrateSong };
+async function boot() {
+  if (enableTestHooks) {
+    const { FINISHES, finishOf, softClip } = await import('./audio/master');
+    const { getSong, update, migrate: migrateSong } = await import('./store');
+    const { renderSong } = await import('./audio/export');
+    const { runPolish } = await import('./audio/polishClient');
+    const { trackPitch } = await import('./audio/polishDsp');
+    const { applyRecipe, applyTempo } = await import('./actions');
+    const { polishContext } = await import('./audio/takes');
+    const { contextMode } = await import('./ui/App');
+    const { midiToName, keyAfterTranspose } = await import('./theory');
+    const { setUi, ui } = await import('./ui/ui');
+    const { takeSectionTranspose, TAKE_PREROLL_SEC } = await import('./audio/compose');
+    const { VOICES, voiceById } = await import('./audio/library');
+    const { toneCutoffHz, mixHasMacros, macrosForTrack, sendLevel, LEGACY_MACROS, DEFAULT_MACROS } = await import('./audio/macros');
+    const { trimTakeToSection, trimTakeToSectionFloor, takeLookupTime, TAKE_SECTION_SLOP_SEC } = await import('./audio/takeTiming');
+    const { isPlaying, stop, play } = await import('./audio/engine');
+    (window as any).__mq = {
+      FINISHES, finishOf, softClip, getSong, update, migrateSong, renderSong, runPolish, trackPitch,
+      applyRecipe, applyTempo, polishContext, contextMode, midiToName, keyAfterTranspose, setUi, ui,
+      takeSectionTranspose, TAKE_PREROLL_SEC, VOICES, voiceById, toneCutoffHz, mixHasMacros, macrosForTrack,
+      sendLevel, LEGACY_MACROS, DEFAULT_MACROS, trimTakeToSection, trimTakeToSectionFloor, takeLookupTime,
+      TAKE_SECTION_SLOP_SEC, isPlaying, stop, play,
+    };
+  }
+  await initStore();
+  render(<App />, document.getElementById('root')!);
+  if ('serviceWorker' in navigator && !import.meta.env.DEV) registerSW({ immediate: true });
+}
+
+void boot();
