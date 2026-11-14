@@ -1,13 +1,14 @@
-import { useState } from 'preact/hooks';
-import { getSong, replaceSong, update, useSong } from '../store';
+import { useEffect, useState } from 'preact/hooks';
+import { getSong, maybeWarnStorage, replaceSong, requestPersistentStorage, saveNow, storageEstimate, update, useSong } from '../store';
 import { lyricKeys, makeSection, TRACKS, uid, type Song, type TrackId } from '../model';
 import { SECTION_TYPES, type SectionType } from '../theory';
 import { Card, Select, Stepper } from './common';
 import { setUi, toast } from './ui';
-import { play, refreshMix } from '../audio/engine';
+import { play, refreshMix, stop } from '../audio/engine';
 import { MacroSliders, SoundPicker, currentVoiceName } from './SoundPicker';
 import { sectionStartBeat } from '../audio/compose';
 import { download, encodeWav, exportMidi, exportStemsZip, renderSong, safeName } from '../audio/export';
+import { backupFileName, exportProjectZip, importProjectFile } from '../audio/backup';
 import { FINISHES, finishOf } from '../audio/master';
 import { LegalSheet, type LegalPage } from './LegalSheet';
 import { CONTACT_EMAIL } from '../legal';
@@ -39,7 +40,11 @@ function Arrange() {
               </div>
             </div>
             <div class="sec-controls">
-              <Select label="Section type" value={sec.type} options={SECTION_TYPES.map((t) => [t, t])} onChange={(v) => ed((x) => { x.sections[i].type = v as SectionType; x.sections[i].part = v; }, `Changed section ${i + 1} to ${v}`)} />
+              <Select label="Section type" value={sec.type} options={SECTION_TYPES.map((t) => [t, t])} onChange={(v) => ed((x) => {
+                x.sections[i].type = v as SectionType;
+                // Keep an existing custom part; only default when still tied to the old type name.
+                if (!x.sections[i].part || x.sections[i].part === sec.type) x.sections[i].part = v;
+              }, `Changed section ${i + 1} to ${v}`)} />
               <Stepper label="bars" value={sec.bars} min={1} max={32} onChange={(v) => ed((x) => { x.sections[i].bars = v; }, `Set ${keys[i]} to ${v} bars`)} suffix=" bars" />
               <button class={'chip' + (sec.beat === 'B' ? ' on' : '')} onClick={() => ed((x) => { x.sections[i].beat = sec.beat === 'A' ? 'B' : 'A'; }, `${keys[i]} uses Beat ${sec.beat === 'A' ? 'B' : 'A'}`)}>Beat {sec.beat}</button>
               <Stepper label="key shift" value={sec.transpose} min={-5} max={5} onChange={(v) => ed((x) => { x.sections[i].transpose = v; }, `Set key shift of ${keys[i]} to ${v}`)} prefix="Key " />
@@ -50,7 +55,22 @@ function Arrange() {
                   onClick={() => ed((x) => { x.sections[i].layers[l] = !sec.layers[l]; }, `${sec.layers[l] ? 'Muted' : 'Added'} ${l} in ${keys[i]}`)}>{LAYER_SHORT[l]}</button>
               ))}
             </div>
-            {sec.layers.melody && <p class="muted tiny">Melody part: {sec.part}{(s.parts[sec.part]?.length ?? 0) === 0 ? ' (empty, play one in the Play tab)' : ''}</p>}
+            {sec.layers.melody && (() => {
+              const partOpts = Array.from(new Set([
+                ...s.sections.map((x) => x.part),
+                ...Object.keys(s.parts),
+                ...SECTION_TYPES,
+                keys[i],
+                `${keys[i]} melody`,
+              ].filter(Boolean)));
+              return (
+                <div class="row wrap">
+                  <Select label="Melody part" value={sec.part} options={partOpts.map((p) => [p, `Melody: ${p}`])}
+                    onChange={(v) => ed((x) => { x.sections[i].part = v; }, `Set ${keys[i]} melody part to ${v}`)} />
+                  <span class="muted tiny">{(s.parts[sec.part]?.length ?? 0) === 0 ? 'Empty — record it in Play' : `${s.parts[sec.part].length} notes`}</span>
+                </div>
+              );
+            })()}
           </li>
         ))}
       </ol>
@@ -114,6 +134,15 @@ function Mixer() {
 
 function Exports() {
   const s = useSong();
+  const [storageLabel, setStorageLabel] = useState('');
+  useEffect(() => {
+    void maybeWarnStorage(toast);
+    void storageEstimate().then((e) => {
+      if (!e) return;
+      const pct = Math.round((e.usage / e.quota) * 100);
+      setStorageLabel(`On-device storage: ${pct}% used (${Math.round(e.usage / 1e6)} MB of ~${Math.round(e.quota / 1e6)} MB)`);
+    });
+  }, [s.takes.length]);
   const run = async (label: string, fn: () => Promise<void>) => {
     await stop();
     setUi({ busy: label });
@@ -130,13 +159,32 @@ function Exports() {
         <button class="btn export" data-testid="export-midi" onClick={() => run('Writing MIDI…', async () => { download(exportMidi(getSong()), `${base}.mid`); })}><IconDownload size={20} /> MIDI</button>
         <button class="btn export" data-testid="export-lyrics" onClick={() => run('Making lyric sheet…', async () => { download(lyricSheetPdf(getSong()), `${base}-lyrics.pdf`); })}><IconDownload size={20} /> Lyric sheet PDF</button>
         <button class="btn export" data-testid="export-log" onClick={() => run('Making authorship log…', async () => { download(await authorshipPdf(getSong()), `${base}-authorship-log.pdf`); })}><IconDownload size={20} /> Authorship log PDF</button>
-        <button class="btn export ghost" onClick={() => run('Saving backup…', async () => { download(new Blob([JSON.stringify(getSong(), null, 1)], { type: 'application/json' }), `${base}.mixquilt.json`); })}><IconDownload size={20} /> Backup (.json, no audio)</button>
-        <label class="btn export ghost">Import backup<input type="file" accept=".json,application/json" hidden onChange={async (e) => {
+        <button class="btn export" data-testid="export-full-backup" onClick={() => run('Saving full backup…', async () => {
+          await saveNow();
+          download(await exportProjectZip(getSong(), (m) => setUi({ busy: m })), backupFileName(getSong().title));
+          await requestPersistentStorage();
+        })}><IconDownload size={20} /> Full backup (.zip, includes vocals)</button>
+        <button class="btn export ghost" data-testid="export-json-backup" onClick={() => run('Saving JSON backup…', async () => {
+          await saveNow();
+          download(new Blob([JSON.stringify(getSong(), null, 1)], { type: 'application/json' }), `${base}.mixquilt.json`);
+        })}><IconDownload size={20} /> JSON only (no audio)</button>
+        <label class="btn export ghost">Import backup<input type="file" accept=".json,.zip,application/json,application/zip" data-testid="import-backup" hidden onChange={async (e) => {
           const f = (e.target as HTMLInputElement).files?.[0]; if (!f) return;
-          try { const d = JSON.parse(await f.text()) as Song; if (!d.recipe || !d.sections) throw new Error('bad'); d.id = uid(); d.takes = []; d.log.push({ ts: new Date().toISOString(), kind: 'import', text: `Imported from backup file ${f.name}` }); await stop(); await replaceSong(d); toast('Backup imported as a new song'); }
-          catch { toast('That file is not a Mixquilt backup.'); }
+          (e.target as HTMLInputElement).value = '';
+          try {
+            await stop();
+            await saveNow();
+            setUi({ busy: 'Importing backup…' });
+            const res = await importProjectFile(f);
+            await replaceSong(res.song);
+            if (res.kind === 'full') toast(`Imported as a new song (${res.audioCount} vocal file${res.audioCount === 1 ? '' : 's'} restored)`);
+            else toast('JSON imported as a new song. Vocals were not in that file — use Full backup (.zip) to move takes.');
+            await requestPersistentStorage();
+          } catch { toast('That file is not a Mixquilt backup.'); }
+          setUi({ busy: '' });
         }} /></label>
       </div>
+      {storageLabel && <p class="muted tiny" data-testid="storage-usage">{storageLabel}</p>}
       <label class="field"><span>Songwriter name for PDFs (optional)</span>
         <input class="input" value={s.credits.author} placeholder="Your name" onChange={(e) => update((x) => { x.credits.author = (e.target as HTMLInputElement).value.trim(); }, ['credits', 'Set songwriter name'])} />
       </label>
@@ -148,14 +196,14 @@ function Versions() {
   const s = useSong();
   const [label, setLabel] = useState('');
   return (
-    <Card title="Versions" sub="Save a snapshot any time. Each one gets a timestamp and a digital fingerprint.">
+    <Card title="Versions" sub="Snapshots of arrangement, beats, melodies, lyrics and mix — not vocal audio. Use Full backup to keep takes.">
       <form class="row" onSubmit={async (e) => {
         e.preventDefault();
         const snap = JSON.stringify({ ...getSong(), versions: [], log: [] });
         const hash = await sha256(snap);
         const l = label.trim() || `Version ${s.versions.length + 1}`;
         update((x) => { x.versions.push({ id: uid(), ts: new Date().toISOString(), label: l, hash, data: snap }); }, ['version', `Saved version "${l}" (SHA-256 ${hash.slice(0, 12)}…)`]);
-        setLabel(''); toast('Version saved');
+        setLabel(''); toast('Version saved (vocals stay as they are — not stored in versions)');
       }}>
         <input class="input grow" placeholder="Version name (optional)" value={label} onInput={(e) => setLabel((e.target as HTMLInputElement).value)} />
         <button class="btn primary" type="submit" data-testid="save-version">Save version</button>
@@ -165,13 +213,24 @@ function Versions() {
           <li key={v.id}>
             <div><b>{v.label}</b><br /><span class="muted tiny">{fmtTime(v.ts)} · {v.hash.slice(0, 16)}…</span></div>
             <button class="btn sm ghost" onClick={() => {
-              if (!confirm(`Go back to "${v.label}"? Your current state is saved as a version first.`)) return;
+              if (!confirm(`Restore "${v.label}"?\n\nThis restores arrangement, beats, melodies, lyrics and mix.\nYour current vocal takes stay on this song (versions do not store audio).\nCurrent state is saved as a version first.`)) return;
               const cur = JSON.stringify({ ...getSong(), versions: [], log: [] });
-              sha256(cur).then((h) => update((x) => {
-                x.versions.push({ id: uid(), ts: new Date().toISOString(), label: 'Before restoring ' + v.label, hash: h, data: cur });
-                const d = JSON.parse(v.data) as Song;
-                Object.assign(x, { ...d, id: x.id, log: x.log, versions: x.versions, takes: x.takes.map((t) => ({ ...t, active: d.takes.find((q) => q.id === t.id)?.active ?? false })) });
-              }, ['version', `Restored version "${v.label}"`]));
+              sha256(cur).then((h) => {
+                update((x) => {
+                  x.versions.push({ id: uid(), ts: new Date().toISOString(), label: 'Before restoring ' + v.label, hash: h, data: cur });
+                  const d = JSON.parse(v.data) as Song;
+                  const keptTakes = x.takes;
+                  Object.assign(x, {
+                    ...d,
+                    id: x.id,
+                    log: x.log,
+                    versions: x.versions,
+                    // Keep real takes (with audio in IndexedDB). Only adopt active flags when the same take id existed in the snapshot.
+                    takes: keptTakes.map((t) => ({ ...t, active: d.takes.find((q) => q.id === t.id)?.active ?? t.active })),
+                  });
+                }, ['version', `Restored version "${v.label}" (vocals kept)`]);
+                toast('Version restored. Vocal takes were kept.');
+              });
             }}>Restore</button>
           </li>
         ))}

@@ -1,5 +1,5 @@
 import * as Tone from 'tone';
-import type { Song, Take } from '../model';
+import type { Song } from '../model';
 import { getSong } from '../store';
 import { Rig, rigSignature } from './rig';
 import { eventsForBeat, songBeats, type Ev, type PlayMode } from './compose';
@@ -14,7 +14,7 @@ let mode: PlayMode = { kind: 'song' };
 let playing = false;
 let startedAt = 0, startOffset = 0;
 const listeners = new Set<() => void>();
-export const settings = { metronome: false, countIn: true };
+export const settings = { metronome: false };
 export const isPlaying = () => playing;
 export const currentMode = () => mode;
 export const onEngine = (l: () => void) => { listeners.add(l); return () => listeners.delete(l); };
@@ -143,5 +143,4 @@ export async function liveDrum(row: string) {
   const t = native!.currentTime + 0.005;
   if (row === 'bass') { const s = getSong(); r.bass.trigger([degreeToMidi(s.recipe.key, s.recipe.mode, 0, 36)], 0.3, t, 0.9); } else r.kit.hit(row, t, 0.9);
 }
-export function previewTake(_t: Take) { /* handled in takes.ts */ }
 export const getRig = () => rig;

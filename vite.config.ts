@@ -42,5 +42,11 @@ export default defineConfig({
     }),
   ],
   preview: { allowedHosts: ['.trycloudflare.com', '.loca.lt', 'localhost'] },
-  build: { target: 'es2021', chunkSizeWarningLimit: 1500, sourcemap: true },
+  // Sourcemaps in production expose proprietary TypeScript on the public web.
+  // Keep them for local `vite` / explicit CI test builds via VITE_SOURCEMAP=true.
+  build: {
+    target: 'es2021',
+    chunkSizeWarningLimit: 1500,
+    sourcemap: process.env.VITE_SOURCEMAP === 'true',
+  },
 });
