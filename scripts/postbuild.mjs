@@ -6,11 +6,11 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 // Note: frame-ancestors is ignored (and warns) when delivered via <meta>; omit it here.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval'",
+  "script-src 'self' 'wasm-unsafe-eval' blob:",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "media-src 'self' blob:",
-  "connect-src 'self'",
+  "connect-src 'self' blob:",
   "worker-src 'self' blob:",
   "font-src 'self'",
   "base-uri 'self'",
