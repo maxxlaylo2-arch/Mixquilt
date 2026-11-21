@@ -41,7 +41,10 @@ jobs:
           npm audit --audit-level=high
           npm audit --omit=dev --audit-level=high
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends poppler-utils unzip
       - name: Run browser suites
         run: |
           npm run build:test
