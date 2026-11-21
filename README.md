@@ -19,11 +19,14 @@ Live app: https://maxxlaylo2-arch.github.io/Mixquilt/
     npm run dev          # dev server (includes window.__mq test hooks)
     npm run build        # type-check + production build into dist/ (no __mq, no sourcemaps)
     npm run build:test   # production-like build with VITE_TEST_HOOKS=true for Playwright
+    npm run verify:production # inspect dist/ security, routing and release invariants
     npm run build:native # build with relative paths (BASE_PATH=./) for Capacitor
     npm run preview      # serve dist/ on http://localhost:4173/Mixquilt/
-    npm run test:unit    # theory / polish / preroll / master (no browser)
+    npm run test:unit    # theory / polish / preroll / master / CSP (no browser)
     npm run smoke        # Playwright smoke (Chrome or MQ_CHROME / Playwright Chromium)
     npm run regressions  # Playwright regressions (needs build:test + preview)
+    npm run test:voices  # render and meter every built-in voice
+    npm run test:finish  # desktop/mobile finishing pass
 
 ## Backup
 - **Full backup (.zip)** — song + vocal audio (and polish caches). Prefer this when moving devices.
@@ -40,25 +43,30 @@ Live app: https://maxxlaylo2-arch.github.io/Mixquilt/
 - `src/ui/` Preact screens (Recipe, Beat, Play, Lyrics, Mic, Song)
 
 ## Wrapping as a mobile app (Capacitor)
-`@capacitor/core` / `@capacitor/cli` are in package.json. `capacitor.config.json` points at `dist/`.
+The generated `ios/` and `android/` projects are checked in. `capacitor.config.json` points at `dist/`, and both native
+shells already declare microphone access.
 
     npm run build:native          # BASE_PATH=./ production web build
-    npx cap add ios               # once
-    npx cap add android           # once
     npm run cap:sync              # build:native + cap sync
+    npx cap open ios              # requires macOS + Xcode
+    npx cap open android          # requires Android Studio + Android SDK 36
 
-Then open Xcode / Android Studio. Add microphone usage strings (iOS `NSMicrophoneUsageDescription`, Android `RECORD_AUDIO`) before shipping store builds.
+Store signing, real-device microphone tests and App Store/Play Console submissions require the owner's Apple and Google
+developer accounts. See [docs/OPERATIONS.md](docs/OPERATIONS.md) for release gates and signing prerequisites.
 
 ## Licenses
 CMU Pronouncing Dictionary (BSD-2-Clause) and SCOWL word lists notices are in `public/licenses/`,
 shown in-app under Song → About. All other shipped packages are permissive (MIT, 0BSD, Apache-2.0); `THIRD-PARTY-NOTICES.txt` has the full texts and is regenerated on every build (the build fails on copyleft or unknown licenses).
 
 ## Testing
-    npm run build && npm run preview &      # serves dist/ on :4173
+    npm run build:test && npm run preview & # serves dist/ on :4173 with test hooks
     npm run smoke                           # end-to-end smoke test (fake mic), screenshots -> ../screenshots, exports -> ../exports
-    node tests/levels.mjs                   # renders every built-in instrument and prints its loudness (keeps palettes balanced)
+    npm run regressions
+    npm run test:voices                     # renders every built-in instrument and checks loudness
+    npm run test:finish
 
-`window.__mq` (getSong/update/renderSong) is a small hook the tests use.
+The smoke suite also proves full ZIP backup/restore (including recorded audio) and malformed-backup rejection.
+`window.__mq` (getSong/update/renderSong) is a small test hook included only by `build:test`.
 
 ### Voice Polish (classic DSP, no AI)
 
@@ -67,10 +75,10 @@ Mic tab → a take's **✨ Voice Polish** button. Presets Off / Natural / Polish
     npm run test:polish   # Node DSP test with synthetic off-pitch vocal-like tones
 
 ## Hosting (GitHub Pages)
-`.github/workflows/deploy.yml` builds and deploys to GitHub Pages on every push to `main`, using
-`actions/deploy-pages`. In the repo, go to Settings → Pages and set Source to **GitHub Actions**. The base path comes from
-`BASE_PATH` (default `/Mixquilt/`; the workflow sets it to `/<repo name>/`, which is case-sensitive). The manifest
-`start_url`/`scope` and the service worker scope follow the base. `dist/404.html` sends unknown paths back to the app.
+`.github/workflows/deploy.yml` runs unit, browser, release-bundle and dependency checks for pull requests and every
+Monday. A successful `main` push builds a fresh production artifact and deploys it with GitHub Pages. In the repo, set
+Settings → Pages → Source to **GitHub Actions**. The base path comes from `BASE_PATH` (default `/Mixquilt/`; the workflow
+sets it to `/<repo name>/`, case-sensitive). The manifest, service worker scope and `dist/404.html` follow that base.
 
 ## Privacy, terms and compliance
 - [PRIVACY.md](PRIVACY.md) and [TERMS.md](TERMS.md) (New York governing law) are also shown in the app (Song → About → Privacy / Terms / Licenses).
