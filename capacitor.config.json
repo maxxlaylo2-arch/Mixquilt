@@ -1,5 +1,9 @@
 {
   "appId": "app.mixquilt.studio",
   "appName": "Mixquilt",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {}
 }

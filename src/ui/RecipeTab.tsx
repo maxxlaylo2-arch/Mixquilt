@@ -21,7 +21,9 @@ function Ingredient(p: { field: RecipeField; children: any; hint?: string }) {
           {locked ? <IconLock size={18} /> : <IconUnlock size={18} />}<span>{locked ? 'Locked' : 'Lock'}</span>
         </button>
       </div>
-      <div class="ing-body">{p.children}</div>
+      <fieldset class="ing-body" disabled={locked} aria-disabled={locked}>
+        {p.children}
+      </fieldset>
       {p.hint && <p class="muted small">{p.hint}</p>}
     </div>
   );

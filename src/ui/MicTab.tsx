@@ -11,6 +11,7 @@ import { deleteTakeAudio, previewTake, saveTakeAudio, stopPreview } from '../aud
 import { PRESETS, type VoicePolishSettings } from '../audio/voicePolish';
 import { VoicePolishSheet } from './VoicePolishSheet';
 import { db } from '../db';
+import { maybeWarnStorage, requestPersistentStorage } from '../store';
 import { IconPlay, IconRecord, IconStop, IconTrash } from './icons';
 
 function Teleprompter() {
@@ -97,6 +98,8 @@ export function MicTab() {
       for (const t of x.takes) if (t.active && t.start < take.start + take.duration && take.start < t.start + t.duration) { t.active = false; muted++; }
       x.takes.push(take);
     }, ['vocal', `Recorded vocal take "${take.name}" (${take.duration.toFixed(1)} s)`]);
+    void requestPersistentStorage();
+    void maybeWarnStorage(toast);
     toast(muted ? 'Take saved. Older takes in the same spot were turned off.' : 'Take saved.');
   }
 

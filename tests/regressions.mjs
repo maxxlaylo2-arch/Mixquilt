@@ -14,7 +14,11 @@ const ok = (name, cond, extra = '') => {
   if (!cond) process.exitCode = 1;
 };
 
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
+const chromePath = process.env.MQ_CHROME || (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
+const browser = await chromium.launch({
+  ...(chromePath ? { executablePath: chromePath } : {}),
+  args: ['--autoplay-policy=no-user-gesture-required'],
+});
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 const errors = [];
@@ -22,6 +26,7 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(URL);
 await page.waitForSelector('.hero h1');
+await page.waitForFunction(() => window.__mq && typeof window.__mq.stop === 'function');
 
 // --- 5. Title saves on input, before blur ---
 await page.click('.title-input');
@@ -403,9 +408,34 @@ if (fs.existsSync(GOLDEN)) {
   ok('Pre-library golden WAV is present for a null/close test', false, `missing ${GOLDEN}`);
 }
 
+// Export must call engine.stop (not window.stop) so transport actually halts.
+{
+  await page.evaluate(async () => {
+    window.__mq.update((s) => {
+      s.beats.A.kick[0] = 1;
+      s.beats.A.hat[0] = 1;
+    });
+    await window.__mq.play({ kind: 'song' });
+  });
+  await page.waitForTimeout(400);
+  const playingBefore = await page.evaluate(() => window.__mq.isPlaying());
+  ok('Playback running before export stop check', playingBefore === true);
+  await page.evaluate(async () => { await window.__mq.stop(); });
+  const playingAfter = await page.evaluate(() => window.__mq.isPlaying());
+  ok('engine.stop halts transport (SongTab must import this, not DOM stop)', playingAfter === false);
+  // Song tab export path: clicking MIDI export should leave transport stopped
+  await page.evaluate(async () => {
+    await window.__mq.play({ kind: 'song' });
+  });
+  await page.waitForTimeout(200);
+  await page.evaluate(() => window.__mq.setUi({ tab: 'song' }));
+  await page.click('[data-testid="export-midi"]');
+  await page.waitForTimeout(800);
+  const afterExport = await page.evaluate(() => window.__mq.isPlaying());
+  ok('MIDI export leaves transport stopped (uses engine.stop)', afterExport === false);
+}
+
 ok('No page or console errors during regressions', errors.length === 0, errors.join(' | '));
-
-
 
 console.log('\nSUMMARY');
 for (const l of results) console.log(l);

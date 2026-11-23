@@ -1,22 +1,26 @@
-name: Deploy to GitHub Pages
+name: Test & deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 7 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: false
+  group: mixquilt-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  verify:
+    name: Verify application
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -26,17 +30,88 @@ jobs:
       - run: npm ci
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
-      - run: npm run build
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Verify production bundle
+        run: npm run build && npm run verify:production
+      - name: Verify native project sync
+        run: npm run cap:sync && git diff --exit-code -- android ios THIRD-PARTY-NOTICES.txt public/licenses/THIRD-PARTY-NOTICES.txt
+      - name: Audit dependencies
+        run: |
+          npm audit --audit-level=high
+          npm audit --omit=dev --audit-level=high
+      - name: Install Playwright Chromium
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends poppler-utils unzip
+      - name: Run browser suites
+        run: |
+          npm run build:test
+          npm run preview > "${RUNNER_TEMP}/mixquilt-preview.log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..45}; do
+            if curl --fail --silent "$MQ_URL" > /dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent "$MQ_URL" > /dev/null
+          npm run smoke
+          npm run regressions
+          npm run test:voices
+          npm run test:finish
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+          MQ_URL: http://127.0.0.1:4173/${{ github.event.repository.name }}/
+          MQ_SHOTS: ${{ runner.temp }}/mixquilt-artifacts/screenshots
+          MQ_EXPORTS: ${{ runner.temp }}/mixquilt-artifacts/exports
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/mixquilt-artifacts
+            ${{ runner.temp }}/mixquilt-preview.log
+          if-no-files-found: ignore
+
+  build-pages:
+    name: Build deployable Pages artifact
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Production build (no test hooks, no sourcemaps)
+        run: npm run build
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+      - run: npm run verify:production
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
-  deploy:
-    needs: build
+  deploy-pages:
+    name: Deploy GitHub Pages
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: build-pages
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

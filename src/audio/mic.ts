@@ -10,9 +10,15 @@ export const setExtraLatencyMs = (ms: number) => localStorage.setItem(LAT_KEY, S
 
 export async function getMic(): Promise<MediaStream> {
   if (stream && stream.active) return stream;
-  stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 },
-  });
+  // Prefer raw capture. Some Safari builds ignore or reject advanced constraints — fall back.
+  const prefer: MediaTrackConstraints = {
+    echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1,
+  };
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: prefer });
+  } catch {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
   return stream;
 }
 /** Turns the microphone fully off (the browser's recording indicator goes away). */
@@ -35,9 +41,15 @@ export interface Recording { stop: () => Promise<{ data: Float32Array; firstTime
 
 export async function startRecording(): Promise<Recording> {
   const ctx = nativeContext();
-  await ctx.resume();
+  if (ctx.state === 'suspended') await ctx.resume();
+  // iOS Safari often needs a second resume after getUserMedia.
   const ms = await getMic();
-  if (!moduleLoaded) { await ctx.audioWorklet.addModule(new URL('recorder-worklet.js', document.baseURI).href); moduleLoaded = true; }
+  if (ctx.state === 'suspended') await ctx.resume();
+  if (!moduleLoaded) {
+    const url = new URL('recorder-worklet.js', document.baseURI).href;
+    await ctx.audioWorklet.addModule(url);
+    moduleLoaded = true;
+  }
   const src = ctx.createMediaStreamSource(ms);
   const node = new AudioWorkletNode(ctx, 'mq-recorder', { numberOfInputs: 1, numberOfOutputs: 1, channelCount: 1 });
   const analyser = ctx.createAnalyser();

@@ -1,7 +1,12 @@
 // Measures the loudness of every built-in instrument so the palettes stay balanced.
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 const URL = process.env.MQ_URL || 'http://localhost:4173/Mixquilt/';
-const b = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
+const chromePath = process.env.MQ_CHROME || (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
+const b = await chromium.launch({
+  ...(chromePath ? { executablePath: chromePath } : {}),
+  args: ['--autoplay-policy=no-user-gesture-required'],
+});
 const page = await b.newPage();
 page.setDefaultTimeout(120000);
 page.on('pageerror', (e) => console.error('PAGEERROR', e.message));

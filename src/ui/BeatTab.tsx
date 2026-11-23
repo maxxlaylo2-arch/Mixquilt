@@ -73,7 +73,17 @@ export function BeatTab() {
             </div>
           ))}
         </div>
-        <p class="muted small">The Bass note row plays the root of the current chord. Swing: {grooveById(s.recipe.groove).label} (change it in Recipe).</p>
+        <div class="groove-meter" data-testid="groove-meter" aria-label={`Swing ${Math.round(grooveById(s.recipe.groove).swing * 100)} percent`}>
+          <div class="row between">
+            <span class="muted small">Groove · {grooveById(s.recipe.groove).label}</span>
+            <span class="muted tiny">{Math.round(grooveById(s.recipe.groove).swing * 100)}% swing</span>
+          </div>
+          <div class="groove-track" aria-hidden="true">
+            <span class="groove-knob" style={{ left: `${Math.min(100, Math.max(0, (grooveById(s.recipe.groove).swing - 0.5) / 0.2 * 100))}%` }} />
+          </div>
+          <p class="muted tiny">Left = straight · right = heavier swing. Change groove in Recipe.</p>
+        </div>
+        <p class="muted small">The Bass note row plays the root of the current chord.</p>
       </Card>
       <NextStep label="Next: play chords and melody" onClick={() => setUi({ tab: 'play' })} />
     </div>

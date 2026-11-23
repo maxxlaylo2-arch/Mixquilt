@@ -11,7 +11,7 @@ const SHIPPED_DEV = ['workbox-window', 'workbox-core', 'workbox-precaching', 'wo
 
 const tree = JSON.parse(execFileSync('npm', ['ls', '--omit=dev', '--all', '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 }));
 const pkgs = new Map();
-const walk = (deps) => { for (const [name, d] of Object.entries(deps || {})) { if (!d.version || pkgs.has(name + '@' + d.version)) continue; pkgs.set(name + '@' + d.version, name); walk(d.dependencies); } };
+const walk = (deps) => { for (const [name, d] of Object.entries(deps || {})) { if (!d.version || d.extraneous || pkgs.has(name + '@' + d.version)) continue; pkgs.set(name + '@' + d.version, name); walk(d.dependencies); } };
 walk(tree.dependencies);
 const addTree = (name) => { const pj = JSON.parse(readFileSync(join('node_modules', name, 'package.json'), 'utf8')); if (!pkgs.has(name + '@' + pj.version)) { pkgs.set(name + '@' + pj.version, name); for (const dep of Object.keys(pj.dependencies || {})) if (existsSync(join('node_modules', dep))) addTree(dep); } };
 SHIPPED_DEV.forEach(addTree);

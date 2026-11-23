@@ -5,7 +5,11 @@ const URL = process.env.MQ_URL || 'http://localhost:4173/Mixquilt/';
 const SHOTS = process.env.MQ_SHOTS || '/workspace/mixquilt-guidebook/test-beats/screenshots';
 fs.mkdirSync(SHOTS, { recursive: true });
 const ok = (name, cond, extra = '') => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`); if (!cond) process.exitCode = 1; };
-const browser = await chromium.launch({ executablePath: '/usr/bin/google-chrome', args: ['--autoplay-policy=no-user-gesture-required'] });
+const chromePath = process.env.MQ_CHROME || (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
+const browser = await chromium.launch({
+  ...(chromePath ? { executablePath: chromePath } : {}),
+  args: ['--autoplay-policy=no-user-gesture-required'],
+});
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 const page = await ctx.newPage();
 page.setDefaultTimeout(120000);

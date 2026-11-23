@@ -11,9 +11,15 @@
     "test:polish": "node tests/polish-dsp.test.mjs",
     "test:theory": "node tests/theory.test.mjs",
     "test:preroll": "node tests/preroll.test.mjs",
+    "test:csp": "node tests/postbuild-csp.test.mjs",
+    "test:notices": "node tests/notices.test.mjs",
     "test:voices": "node tests/levels.mjs",
     "regressions": "node tests/regressions.mjs",
+    "test:unit": "npm run test:theory && npm run test:polish && npm run test:preroll && npm run test:master && npm run test:csp && npm run test:notices",
     "build:native": "BASE_PATH=./ npm run build",
+    "build:test": "VITE_TEST_HOOKS=true npm run build",
+    "verify:production": "node scripts/verify-production.mjs",
+    "cap:sync": "npm run build:native && npx cap sync",
     "notices": "node scripts/gen-notices.mjs",
     "test:master": "node tests/master.test.mjs",
     "test:finish": "node tests/master-finish.mjs"
@@ -22,6 +28,9 @@
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "dependencies": {
+    "@capacitor/android": "^8.6.2",
+    "@capacitor/core": "^8.2.0",
+    "@capacitor/ios": "^8.6.2",
     "@tonejs/midi": "^2.0.28",
     "fflate": "^0.8.3",
     "jspdf": "^4.2.1",
@@ -29,11 +38,18 @@
     "tone": "^15.1.22"
   },
   "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.2.0",
     "@preact/preset-vite": "^2.10.6",
-    "playwright": "^1.65.0",
+    "playwright": "^1.65.1",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vite-plugin-pwa": "^2.0.0"
   },
-  "private": true
+  "private": true,
+  "overrides": {
+    "workbox-build": {
+      "glob": "14.0.6"
+    }
+  }
 }

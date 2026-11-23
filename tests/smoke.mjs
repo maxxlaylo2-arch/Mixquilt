@@ -2,6 +2,7 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { strToU8, zipSync } from 'fflate';
 const URL = process.env.MQ_URL || 'http://localhost:4173/Mixquilt/';
 const SHOTS = process.env.MQ_SHOTS || new globalThis.URL('../../screenshots', import.meta.url).pathname;
 const EXPORTS = process.env.MQ_EXPORTS || new globalThis.URL('../../exports', import.meta.url).pathname;
@@ -9,8 +10,9 @@ const errors = [];
 const results = [];
 const ok = (name, cond, extra = '') => { const l = `${cond ? 'PASS' : 'FAIL'} ${name}${extra ? ' — ' + extra : ''}`; results.push(l); console.log(l); if (!cond) process.exitCode = 1; };
 
+const chromePath = process.env.MQ_CHROME || (fs.existsSync('/usr/bin/google-chrome') ? '/usr/bin/google-chrome' : undefined);
 const browser = await chromium.launch({
-  executablePath: '/usr/bin/google-chrome',
+  ...(chromePath ? { executablePath: chromePath } : {}),
   args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required'],
 });
 
@@ -38,6 +40,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const { ctx, page } = await newPage({ width: 390, height: 844 }, true);
   await page.goto(URL);
   await page.waitForSelector('.hero h1');
+  await page.waitForFunction(() => window.__mq);
+  fs.mkdirSync(SHOTS, { recursive: true });
+  fs.mkdirSync(EXPORTS, { recursive: true });
   await page.screenshot({ path: `${SHOTS}/mobile-1-recipe.png`, fullPage: false });
   await page.fill('.title-input', 'Smoke Test Song'); await page.press('.title-input', 'Enter'); await page.click('.hero');
   await page.click('.mood:has-text("Hype")');
@@ -186,7 +191,9 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   await tab(page, 'song');
   await page.screenshot({ path: `${SHOTS}/mobile-9-song.png` });
   await page.click('[data-testid="save-version"]');
-  for (const [id, name] of [['export-midi', 'song.mid'], ['export-lyrics', 'lyrics.pdf'], ['export-log', 'authorship.pdf'], ['export-wav', 'mix.wav'], ['export-stems', 'stems.zip']]) {
+  const originalSong = await page.evaluate(() => ({ id: window.__mq.getSong().id, takes: window.__mq.getSong().takes.length }));
+  let fullBackupPath = '';
+  for (const [id, name] of [['export-midi', 'song.mid'], ['export-lyrics', 'lyrics.pdf'], ['export-log', 'authorship.pdf'], ['export-wav', 'mix.wav'], ['export-stems', 'stems.zip'], ['export-full-backup', 'full-backup.zip']]) {
     const dl = page.waitForEvent('download', { timeout: 300000 });
     await page.click(`[data-testid="${id}"]`);
     const d = await dl;
@@ -196,8 +203,27 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     ok(`Export ${name}`, size > 500, `${d.suggestedFilename()} ${size} bytes`);
     if (name === 'authorship.pdf') { const txt = execFileSync('pdftotext', [p, '-']).toString(); ok('Authorship PDF lists Voice Polish', /Voice Polish/.test(txt) && /Tuned|Custom/.test(txt)); }
     if (name === 'stems.zip') { const z = execFileSync('unzip', ['-l', p]).toString(); ok('Stems include the polished vocal', /vocals\.wav/.test(z)); }
+    if (name === 'full-backup.zip') fullBackupPath = p;
     await page.waitForSelector('.busy', { state: 'detached', timeout: 300000 });
   }
+  await page.setInputFiles('[data-testid="import-backup"]', fullBackupPath);
+  await page.waitForFunction((oldId) => window.__mq.getSong().id !== oldId, originalSong.id);
+  const importedSong = await page.evaluate(() => ({
+    id: window.__mq.getSong().id,
+    takes: window.__mq.getSong().takes.length,
+    imported: window.__mq.getSong().log.some((e) => /Imported full backup/.test(e.text)),
+  }));
+  ok('Full backup imports as a new song with take metadata', importedSong.id !== originalSong.id && importedSong.takes === originalSong.takes && importedSong.imported, JSON.stringify(importedSong));
+  const restoreToast = await page.locator('.toast').textContent();
+  ok('Full backup restores vocal audio', /\([1-9]\d* vocal files? restored\)/.test(restoreToast || ''), restoreToast || '');
+  await tab(page, 'song');
+  await page.setInputFiles('[data-testid="import-backup"]', {
+    name: 'broken.mixquilt.zip',
+    mimeType: 'application/zip',
+    buffer: Buffer.from(zipSync({ 'README.txt': strToU8('missing Mixquilt manifest') })),
+  });
+  await page.waitForFunction(() => /not a Mixquilt backup/.test(document.querySelector('.toast')?.textContent || ''));
+  ok('Malformed backup is rejected without replacing the song', (await page.evaluate(() => window.__mq.getSong().id)) === importedSong.id);
   await page.screenshot({ path: `${SHOTS}/mobile-10-song-full.png`, fullPage: true });
   const logN = await page.locator('[data-testid="log"] li').count();
   ok('Authorship log has entries', logN > 8, `${logN} shown`);
